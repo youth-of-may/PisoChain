@@ -2,13 +2,25 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 contract Project {
+    Expense[] private projectExpenses;
 
-    function setName(string memory _name) public returns(string memory) {
-        
+    address private contractor;
+    string public projectName;
+    uint public projectTotalBudget;
+
+    constructor(string memory _projectName) {
+        contractor = msg.sender;
+        projectName = _projectName;
     }
-    function sayHello() public view returns (string memory) {
-        
+
+    function approveExpense(address _expense) public {
+        Expense(_expense).approve();
+        projectTotalBudget += Expense(_expense).getAmount();
     }
+
+    function rejectExpense(address _expense) public {
+        Expense(_expense).reject();
+    } 
 }
 
 contract Expense {
@@ -28,5 +40,9 @@ contract Expense {
 
     function reject() public {
         status = Status.REJECTED;
+    }
+
+    function getAmount() public view returns (uint) {
+        return amount;
     }
 }
