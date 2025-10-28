@@ -4,24 +4,31 @@ pragma solidity >=0.8.2 <0.9.0;
 contract Expense {
     uint public amount;
     uint public lastUpdatedDate;
+    address public contractor;
+    string public description;
 
     enum Status { PENDING, APPROVED, REJECTED }
     Status public status;
 
     /// @notice Initializes a new expense with an amount
-    constructor(uint _amount) {
+    constructor(uint _amount, address _contractor, string memory _description) {
         amount = _amount;
+        contractor = _contractor;
+        description = _description;
         status = Status.PENDING;
+        lastUpdatedDate = block.timestamp;
     }
 
     /// @notice Sets the expense status to APPROVED
     function approve() public {
+        require(status == Status.PENDING, "Can only approve pending expenses");
         status = Status.APPROVED;
         lastUpdatedDate = block.timestamp;
     }
 
     /// @notice Sets the expense status to REJECTED
     function reject() public {
+        require(status == Status.PENDING, "Can only approve pending expenses");
         status = Status.REJECTED;
         lastUpdatedDate = block.timestamp;
     }
@@ -30,6 +37,19 @@ contract Expense {
     function getAmount() public view returns (uint) {
         return amount;
     }
+
+    function getContractor() public view returns (address) {
+        return contractor;
+    }
+
+    /// @notice Returns the last updated date for the expense
+    function getdate() public view returns (uint) {
+        return lastUpdatedDate;
+    }
+
+    function getStatus() public view returns (Status) {
+        return status;
+    }
 }
 
 contract Project {
@@ -37,33 +57,58 @@ contract Project {
     Expense[] private approvedExpenses;
     Expense[] private rejectedExpenses;
 
-    address private contractor;
+    address private governmentOfficial;
+    ProjectFunds public projectFunds;
+
     string public projectName;
+    string public projectDescription;
     uint public projectTotalBudget;
 
     /// @notice Initializes a new project which serves as an expense factory
-    constructor(string memory _projectName) {
-        contractor = msg.sender;
+    constructor(address _official, string memory _projectName, string memory _projectDescription) {
+        governmentOfficial = _official;
         projectName = _projectName;
+        projectDescription = _projectDescription;
+
+        projectFunds = new ProjectFunds(address(this));
     }
 
-    /// @notice Initializes a new expense
-    function proposeExpense(uint _amount) public {
-        Expense newExpense = new Expense(_amount);
+    modifier onlyGovernmentOfficial() {
+        require(msg.sender == governmentOfficial, "You are not a government official");
+        _;
+    }
+
+    // Only government officials can fund the projects
+    function fundProject() public payable onlyGovernmentOfficial {}
+
+    /// @notice Initializes a new expense, msg.sender is a contractor.
+    function proposeExpense(uint _amount, string memory _description) public {
+        Expense newExpense = new Expense(_amount, msg.sender, _description);
         projectExpenses.push(newExpense);
     }
 
-    /// @notice Approves the expense and adds the amount the project budget
-    function approveExpense(address _expense) public {
-        require(Expense(_expense).status != Status.APPROVED, "Expense already approved");
+    /// @notice Approves the expense and transfers funds to the contractor
+    function approveExpense(address _expense) public onlyGovernmentOfficial {
+        Expense expense = Expense(_expense);
+        uint amount = expense.getAmount();
+        address contractor = expense.getContractor();
 
-        Expense(_expense).approve();
-        projectTotalBudget += Expense(_expense).getAmount();
-        approvedExpenses.push(Expense(_expense));
+        require(address(this).balance >= amount, "Insufficient project funds");
+        require(expense.getStatus() == Expense.Status.PENDING, "Expense not pending");
+        
+        expense.approve();
+        projectTotalBudget += amount;
+        approvedExpenses.push(expense);
+
+        // Send funds to ProjectFunds for this contractor
+        (bool success, ) = address(projectFunds).call{value: amount}(
+            abi.encodeWithSignature("deposit(address,address,uint256)", contractor, _expense, amount)
+        );
+        require(success, "Escrow deposit failed");
     }
 
     /// @notice Rejects the expense
-    function rejectExpense(address _expense) public {
+    function rejectExpense(address _expense) public onlyGovernmentOfficial{
         Expense(_expense).reject();
         rejectedExpenses.push(Expense(_expense));
     } 
@@ -89,22 +134,66 @@ contract Project {
     }
 }
 
+contract ProjectFunds {
+    address public projectContract;
+
+    mapping(address => mapping(address => uint)) public expenseBalances;
+    // expenseBalances[contractor][expenseAddress] = amount
+    mapping(address => mapping(address => bool)) public expenseWithdrawn;
+    // expenseWithdrawn[contractor][expenseAddress] = true if already withdrawn
+
+    modifier onlyProject() {
+        require(msg.sender == projectContract, "Only the project can call this");
+        _;
+    }
+
+    constructor(address _projectContract) {
+        projectContract = _projectContract;
+    }
+
+    /// @notice Receive Ether from the project contract
+    receive() external payable {}
+
+    /// @notice Called by Project to deposit approved funds for a contractor
+    function deposit(address _contractor, address _expense, uint _amount) external payable onlyProject {
+        require(msg.value == _amount, "Incorrect deposit amount");
+        require(expenseBalances[_contractor][_expense] == 0, "Expense already deposited");
+        expenseBalances[_contractor][_expense] = _amount;
+    }
+
+    function withdraw(address _expense) external {
+        uint amount = expenseBalances[msg.sender][_expense];
+        require(amount > 0, "No funds for this expense");
+        require(expenseWithdrawn[msg.sender][_expense] == false, "Already withdrawn");
+
+        expenseWithdrawn[msg.sender][_expense] = true;
+        expenseBalances[msg.sender][_expense] = 0;
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Withdrawal failed");
+    }
+
+}
+
+// Note: Only Government officials can create projects.
 contract ProjectFactory {
+    address private governmentOfficial;
     Project[] private deployedProjects;
 
-    string public factoryName
-
     /// @notice Initializes the project factory
-    constructor(string memory _factoryName) {
-        factoryName = _factoryName;
+    modifier onlyGovernmentOfficial() {
+        require(msg.sender == governmentOfficial, "Not Government Official");
+        _;
+    }
+    constructor() {
+        governmentOfficial = msg.sender;
     }
 
     /// @notice Initializes a new project
-    function proposeProject(string memory _projectName) public {
-        Project newProject = new Project(_projectName);
+    function proposeProject(string memory _projectName, string memory _projectDescription) public onlyGovernmentOfficial {
+        Project newProject = new Project(msg.sender, _projectName, _projectDescription);
         deployedProjects.push(newProject);
     }
-
     /// @notice Returns the list of all projects
     function getAllProjects() public view returns (Project[] memory) {
         return deployedProjects;
