@@ -58,6 +58,7 @@ contract Project {
     Expense[] private rejectedExpenses;
 
     address private governmentOfficial;
+    address public contractor;
     ProjectFunds public projectFunds;
 
     string public projectName;
@@ -65,11 +66,11 @@ contract Project {
     uint public projectTotalBudget;
 
     /// @notice Initializes a new project which serves as an expense factory
-    constructor(address _official, string memory _projectName, string memory _projectDescription) {
+    constructor(address _official, address _contractor, string memory _projectName, string memory _projectDescription) {
         governmentOfficial = _official;
+        contractor = _contractor;
         projectName = _projectName;
         projectDescription = _projectDescription;
-
         projectFunds = new ProjectFunds(address(this));
     }
 
@@ -78,11 +79,15 @@ contract Project {
         _;
     }
 
+    modifier onlyContractor() {
+        require(msg.sender == contractor, "Not project contractor");
+        _;
+    }
     // Only government officials can fund the projects
     function fundProject() public payable onlyGovernmentOfficial {}
 
     /// @notice Initializes a new expense, msg.sender is a contractor.
-    function proposeExpense(uint _amount, string memory _description) public {
+    function proposeExpense(uint _amount, string memory _description) public onlyContractor{
         Expense newExpense = new Expense(_amount, msg.sender, _description);
         projectExpenses.push(newExpense);
     }
@@ -190,10 +195,12 @@ contract ProjectFactory {
     }
 
     /// @notice Initializes a new project
-    function proposeProject(string memory _projectName, string memory _projectDescription) public onlyGovernmentOfficial {
-        Project newProject = new Project(msg.sender, _projectName, _projectDescription);
-        deployedProjects.push(newProject);
+
+    function proposeProject(string memory _projectName, string memory _projectDescription, address _contractor) public onlyGovernmentOfficial {
+        Project newProject = new Project(msg.sender, _contractor, _projectName, _projectDescription);
+        deployedProjects.push(newProject);   
     }
+
     /// @notice Returns the list of all projects
     function getAllProjects() public view returns (Project[] memory) {
         return deployedProjects;
