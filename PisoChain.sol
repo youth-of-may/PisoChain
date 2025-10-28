@@ -71,7 +71,7 @@ contract Project {
         contractor = _contractor;
         projectName = _projectName;
         projectDescription = _projectDescription;
-        projectFunds = new ProjectFunds(address(this));
+        projectFunds = new ProjectFunds(address(this), _contractor);
     }
 
     modifier onlyGovernmentOfficial() {
@@ -141,43 +141,41 @@ contract Project {
 
 contract ProjectFunds {
     address public projectContract;
+    address public contractor;
 
-    mapping(address => mapping(address => uint)) public expenseBalances;
-    // expenseBalances[contractor][expenseAddress] = amount
-    mapping(address => mapping(address => bool)) public expenseWithdrawn;
-    // expenseWithdrawn[contractor][expenseAddress] = true if already withdrawn
+    mapping(address => uint) public expenseBalances;  // expense => amount
+    mapping(address => bool) public expenseWithdrawn; // expense => withdrawn?
 
     modifier onlyProject() {
         require(msg.sender == projectContract, "Only the project can call this");
         _;
     }
 
-    constructor(address _projectContract) {
+    constructor(address _projectContract, address _contractor) {
         projectContract = _projectContract;
+        contractor = _contractor;
     }
 
-    /// @notice Receive Ether from the project contract
     receive() external payable {}
 
-    /// @notice Called by Project to deposit approved funds for a contractor
-    function deposit(address _contractor, address _expense, uint _amount) external payable onlyProject {
+    function deposit(address _expense, uint _amount) external payable onlyProject {
         require(msg.value == _amount, "Incorrect deposit amount");
-        require(expenseBalances[_contractor][_expense] == 0, "Expense already deposited");
-        expenseBalances[_contractor][_expense] = _amount;
+        require(expenseBalances[_expense] == 0, "Expense already deposited");
+        expenseBalances[_expense] = _amount;
     }
 
     function withdraw(address _expense) external {
-        uint amount = expenseBalances[msg.sender][_expense];
+        require(msg.sender == contractor, "Only contractor can withdraw");
+        uint amount = expenseBalances[_expense];
         require(amount > 0, "No funds for this expense");
-        require(expenseWithdrawn[msg.sender][_expense] == false, "Already withdrawn");
+        require(!expenseWithdrawn[_expense], "Already withdrawn");
 
-        expenseWithdrawn[msg.sender][_expense] = true;
-        expenseBalances[msg.sender][_expense] = 0;
+        expenseWithdrawn[_expense] = true;
+        expenseBalances[_expense] = 0;
 
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        (bool success, ) = payable(contractor).call{value: amount}("");
         require(success, "Withdrawal failed");
     }
-
 }
 
 // Note: Only Government officials can create projects.
@@ -190,12 +188,12 @@ contract ProjectFactory {
         require(msg.sender == governmentOfficial, "Not Government Official");
         _;
     }
+
     constructor() {
         governmentOfficial = msg.sender;
     }
 
     /// @notice Initializes a new project
-
     function proposeProject(string memory _projectName, string memory _projectDescription, address _contractor) public onlyGovernmentOfficial {
         Project newProject = new Project(msg.sender, _contractor, _projectName, _projectDescription);
         deployedProjects.push(newProject);   
