@@ -1,4 +1,13 @@
 import Button from "../components/Button"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 export default function Dashboard() {
     return(
         <>
@@ -23,6 +32,39 @@ export default function Dashboard() {
             </div>
         </div>
         <Button url="/projects" target="_self">EXPLORE PROJECTS</Button>
+        <div className="flex w-full justify-center items-center gap-6 h-48">
+        <Card className="bg-[#1E4E79] p-9 shadow-sm w-[25%] slate">
+            <CardHeader>
+            <CardDescription className="text-slate-400">Total Allocated Budget</CardDescription>
+            <CardTitle className="text-white text-6xl font-semibold tabular-nums">
+                $1,250.00
+            </CardTitle>
+            <CardDescription className="text-slate-400">Visitors for the last 6 months</CardDescription>
+            </CardHeader>
+        </Card>
+
+        <Card className="bg-card p-4 shadow-sm w-[25%] p-9">
+            <CardHeader>
+            <CardDescription>Total Projects</CardDescription>
+            <CardTitle className="text-6xl font-semibold tabular-nums">
+                $1,250.00
+            </CardTitle>
+            <CardDescription>Visitors for the last 6 months</CardDescription>
+            </CardHeader>
+        </Card>
+
+        <Card className="bg-card p-4 shadow-sm w-[25%] p-9">
+            <CardHeader>
+            <CardDescription>Total Approved Expenses</CardDescription>
+            <CardTitle className="text-6xl font-semibold tabular-nums">
+                $1,250.00
+            </CardTitle>
+            <CardDescription>Visitors for the last 6 months</CardDescription>
+            </CardHeader>
+        </Card>
+        </div>
+
+        <Button variant="outline" size="lg" className="bg-white border-2 border-[#1E4E79] rounded-full">EXPLORE PROJECTS</Button>
         </>
     )
 }

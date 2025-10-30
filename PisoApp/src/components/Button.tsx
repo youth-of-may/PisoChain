@@ -1,12 +1,13 @@
+import { Link } from "react-router-dom";
 export default function Button({
-  children,
+  children="",
   px = "px-16",
   hoverBg = "hover:bg-[#10549f] hover:text-white",
   isRound = true,
-  url,
+  url ="/",
   target="_blank",
   borderB = "border border-black",
-  click
+  click ="/"
 }) {
   const baseStyle =
     "whitespace-nowrap py-2 transition ease-in-out hover:scale-105";
@@ -27,9 +28,6 @@ export default function Button({
     );
   }
 
-    if (click) {
-      click()
-    }
   }
 
   return (
