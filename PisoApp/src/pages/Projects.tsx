@@ -42,7 +42,7 @@ export default function Projects() {
         <p className="w-xl text-center mb-10 font-inter">Lorem ipsum dolor sit amet. Est placeat tenetur ex Quis omnis a tenetur omnis 33 sapiente veritatis est provident galisum ex error odio. </p>
         <div className="w-[75%] flex gap-x-10 justify-center items-center">
             
-          <div className="container mx-auto flex justify-center">
+          <div className="container mx-auto flex justify-center ">
         <DataTable columns={columns} data={data} />
         </div>
           
