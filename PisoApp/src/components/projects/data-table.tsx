@@ -96,7 +96,7 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="flex flex-col w-[90%] p-8 bg-gray-900/5 rounded">
+    <div className="flex flex-col w-[90%]  p-8 bg-gray-900/5 rounded">
     <div className="flex flex-col gap-4 ">
       {/* ✅ Global Search Input */}
       <div className="flex items-center py-4 gap-x-8">
@@ -181,7 +181,7 @@ export function DataTable<TData, TValue>({
           <TableBody >
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="py-4 bg-white hover:bg-muted/30 transition-colors">
+                <TableRow key={row.id} className="py-4 bg-white hover:bg-blue-200/10 transition-colors">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-4">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
