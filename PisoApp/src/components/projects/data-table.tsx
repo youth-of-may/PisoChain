@@ -110,7 +110,6 @@ export function DataTable<TData, TValue>({
         <SearchIcon />
       </InputGroupAddon>
       <InputGroupAddon align="inline-end">
-        <InputGroupButton>Search</InputGroupButton>
       </InputGroupAddon>
     </InputGroup>
         
