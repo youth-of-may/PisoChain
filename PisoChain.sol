@@ -1,6 +1,38 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.2 <0.9.0;
 
+
+contract RoleRegistry {
+    mapping(address => bool) public isGovernmentOfficial;
+    mapping(address => bool) public isContractor;
+
+    address public admin;
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Not admin");
+        _;
+    }
+
+    function registerOfficial(address _official) external onlyAdmin {
+        isGovernmentOfficial[_official] = true;
+    }
+
+    function registerContractor(address _contractor) external onlyAdmin {
+        isContractor[_contractor] = true;
+    }
+
+    function revokeOfficial(address _official) external onlyAdmin {
+        isGovernmentOfficial[_official] = false;
+    }
+
+    function revokeContractor(address _contractor) external onlyAdmin {
+        isContractor[_contractor] = false;
+    }
+}
 contract Expense {
     uint public amount;
     uint public lastUpdatedDate;
@@ -59,23 +91,24 @@ contract Project {
 
     address private governmentOfficial;
     address public contractor;
+    RoleRegistry public roleRegistry;
     ProjectFunds public projectFunds;
 
-    string public projectName;
-    string public projectDescription;
     uint public projectTotalBudget;
 
-    /// @notice Initializes a new project which serves as an expense factory
-    constructor(address _official, address _contractor, string memory _projectName, string memory _projectDescription) {
+    constructor(address _roleRegistry, address _official, address _contractor) {
+        roleRegistry = RoleRegistry(_roleRegistry);
+
+        require(roleRegistry.isGovernmentOfficial(_official), "Not a government official");
+        require(roleRegistry.isContractor(_contractor), "Not a contractor");
+
         governmentOfficial = _official;
         contractor = _contractor;
-        projectName = _projectName;
-        projectDescription = _projectDescription;
         projectFunds = new ProjectFunds(address(this), _contractor);
     }
 
     modifier onlyGovernmentOfficial() {
-        require(msg.sender == governmentOfficial, "You are not a government official");
+        require(msg.sender == governmentOfficial, "Not government official");
         _;
     }
 
@@ -83,59 +116,47 @@ contract Project {
         require(msg.sender == contractor, "Not project contractor");
         _;
     }
-    // Only government officials can fund the projects
+
     function fundProject() public payable onlyGovernmentOfficial {}
 
-    /// @notice Initializes a new expense, msg.sender is a contractor.
-    function proposeExpense(uint _amount, string memory _description) public onlyContractor{
+    function proposeExpense(uint _amount, string memory _description) public onlyContractor {
         Expense newExpense = new Expense(_amount, msg.sender, _description);
         projectExpenses.push(newExpense);
     }
 
-    /// @notice Approves the expense and transfers funds to the contractor
     function approveExpense(address _expense) public onlyGovernmentOfficial {
         Expense expense = Expense(_expense);
         uint amount = expense.getAmount();
-        address contractor = expense.getContractor();
 
         require(address(this).balance >= amount, "Insufficient project funds");
         require(expense.getStatus() == Expense.Status.PENDING, "Expense not pending");
-        
+
         expense.approve();
         projectTotalBudget += amount;
         approvedExpenses.push(expense);
 
-        // Send funds to ProjectFunds for this contractor
         (bool success, ) = address(projectFunds).call{value: amount}(
-            abi.encodeWithSignature("deposit(address,address,uint256)", contractor, _expense, amount)
+            abi.encodeWithSignature("deposit(address,uint256)", _expense, amount)
         );
         require(success, "Escrow deposit failed");
     }
 
-    /// @notice Rejects the expense
-    function rejectExpense(address _expense) public onlyGovernmentOfficial{
-        Expense(_expense).reject();
-        rejectedExpenses.push(Expense(_expense));
-    } 
+    function rejectExpense(address _expense) public onlyGovernmentOfficial {
+        Expense expense = Expense(_expense);
+        expense.reject();
+        rejectedExpenses.push(expense);
+    }
 
-    /// @notice Returns the list of all expenses for the project
     function getAllExpenses() public view returns (Expense[] memory) {
         return projectExpenses;
     }
 
-    /// @notice Returns the list of approved expenses for the project
     function getApprovedExpenses() public view returns (Expense[] memory) {
         return approvedExpenses;
     }
 
-    /// @notice Returns the list of rejected expenses for the project
     function getRejectedExpenses() public view returns (Expense[] memory) {
         return rejectedExpenses;
-    }
-
-    /// @notice Returns the total budget from approved expenses for the project
-    function getTotalBudget() public view returns (uint) {
-        return projectTotalBudget;
     }
 }
 
@@ -180,26 +201,23 @@ contract ProjectFunds {
 
 // Note: Only Government officials can create projects.
 contract ProjectFactory {
-    address private governmentOfficial;
+    RoleRegistry public roleRegistry;
     Project[] private deployedProjects;
 
-    /// @notice Initializes the project factory
+    constructor(address _roleRegistry) {
+        roleRegistry = RoleRegistry(_roleRegistry);
+    }
+
     modifier onlyGovernmentOfficial() {
-        require(msg.sender == governmentOfficial, "Not Government Official");
+        require(roleRegistry.isGovernmentOfficial(msg.sender), "Not government official");
         _;
     }
 
-    constructor() {
-        governmentOfficial = msg.sender;
+    function proposeProject(address _contractor) public onlyGovernmentOfficial {
+        Project newProject = new Project(address(roleRegistry), msg.sender, _contractor);
+        deployedProjects.push(newProject);
     }
 
-    /// @notice Initializes a new project
-    function proposeProject(string memory _projectName, string memory _projectDescription, address _contractor) public onlyGovernmentOfficial {
-        Project newProject = new Project(msg.sender, _contractor, _projectName, _projectDescription);
-        deployedProjects.push(newProject);   
-    }
-
-    /// @notice Returns the list of all projects
     function getAllProjects() public view returns (Project[] memory) {
         return deployedProjects;
     }
