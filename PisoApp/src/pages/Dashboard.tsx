@@ -6,8 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     return(
         <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         
@@ -67,7 +69,7 @@ export default function Dashboard() {
             variant="outline" 
             size="lg" 
             className="bg-white border-2 p-4 sm:p-6 text-base sm:text-lg border-[#1E4E79] rounded-full w-full sm:w-auto" 
-            onClick={() => window.open('/projects', '_self')}
+            onClick={() => navigate('/projects')}
           >
             EXPLORE PROJECTS
           </Button>
