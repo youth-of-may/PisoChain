@@ -99,7 +99,7 @@ export const columns: ColumnDef<Project>[] = [
       const status = row.getValue("proj_status")
       return (
         <span
-          className={`flex justify-center px-2 py-1 rounded-full text-xs font-medium ${
+          className={`flex justify-center items-center px-2 py-1 rounded-full text-xs font-medium ${
             status === "pending"
               ? "bg-yellow-300/80 text-yellow-800"
               : status === "ongoing"
