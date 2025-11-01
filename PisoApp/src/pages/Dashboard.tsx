@@ -67,7 +67,7 @@ export default function Dashboard() {
             variant="outline" 
             size="lg" 
             className="bg-white border-2 p-4 sm:p-6 text-base sm:text-lg border-[#1E4E79] rounded-full w-full sm:w-auto" 
-            onClick={() => window.open('/projects', '_self')}
+            onClick={() => window.location.href = `/projects`}
           >
             EXPLORE PROJECTS
           </Button>
