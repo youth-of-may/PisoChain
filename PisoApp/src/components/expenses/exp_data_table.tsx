@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { SearchIcon } from "lucide-react"
-import { useNavigate } from "react-router-dom"
 
 import type { 
     ColumnDef, 
@@ -66,14 +65,14 @@ declare module "@tanstack/react-table" {
   }
 }
 
-export function DataTable<TData, TValue>({
+export function ExpensesDataTable<TData, TValue>({
   columns,
   data,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const navigate = useNavigate()
+  
   const table = useReactTable({
     data,
     columns,
@@ -115,7 +114,7 @@ export function DataTable<TData, TValue>({
 
           <Select
             onValueChange={(value) =>
-              table.getColumn("proj_status")?.setFilterValue(value === "all" ? undefined : value)
+              table.getColumn("exp_status")?.setFilterValue(value === "all" ? undefined : value)
             }
           >
             <SelectTrigger className="w-full sm:w-[180px] bg-white">
@@ -123,9 +122,8 @@ export function DataTable<TData, TValue>({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="ongoing">Ongoing</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="Approved">Approved</SelectItem>
+              <SelectItem value="Rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
 
@@ -175,7 +173,6 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     className="py-4 bg-white hover:bg-blue-200/10 transition-colors"
-                    onClick={() => navigate(`/projects/${row.original.proj_id}/expenses`)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className="py-4 whitespace-nowrap">
