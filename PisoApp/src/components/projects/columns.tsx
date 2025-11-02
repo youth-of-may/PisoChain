@@ -28,7 +28,7 @@ const createProjects = (numProj: number) => {
   const projs: Project[] = []
   for (let i = 0; i < numProj; i++) {
     projs.push({
-      proj_id: faker.number.int(),
+      proj_id: faker.number.int({min:1, max:50}),
       ctr_id: faker.number.int(),
       proj_name: faker.company.buzzNoun(),
       proj_type: faker.helpers.arrayElement(["road", "infrastructure", "others"]),

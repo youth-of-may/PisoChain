@@ -11,7 +11,7 @@ import { DualRangeSlider } from '@/components/ui/range';
 import React, { useState } from 'react';
 import { DataTable } from '../components/projects/data-table'
 import { columns, data } from '../components/projects/columns'
-import type { Project } from './components/projects/columns'
+import type { Project } from '../components/projects/columns'
 
 async function getData(): Promise<Project[]> {
   // Fetch data from your API here.
