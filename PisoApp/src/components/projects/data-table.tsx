@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { SearchIcon } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 import type { 
     ColumnDef, 
@@ -72,7 +73,7 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  
+  const navigate = useNavigate()
   const table = useReactTable({
     data,
     columns,
@@ -174,6 +175,7 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     className="py-4 bg-white hover:bg-blue-200/10 transition-colors"
+                    onClick={() => navigate(`/projects/${row.original.proj_id}/expenses`)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className="py-4 whitespace-nowrap">
