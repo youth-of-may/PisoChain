@@ -8,7 +8,7 @@ export default function Navbar() {
   
   return (
     <>
-      <div className="mb-16 sm:mb-20 lg:mb-24 w-full">
+      <div className="mb-16 sm:mb-20 lg:mb-14 w-full">
         <div className="flex items-center justify-between py-4 px-4 sm:px-6 lg:px-8 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
           <Link to="/" className="flex items-center">
             <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#1E4E79] to-[#2980B9] bg-clip-text text-transparent">
