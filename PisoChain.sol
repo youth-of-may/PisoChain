@@ -1,27 +1,66 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.2 <0.9.0;
 
+
+contract RoleRegistry {
+    mapping(address => bool) public isGovernmentOfficial;
+    mapping(address => bool) public isContractor;
+
+    address public admin;
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Not admin");
+        _;
+    }
+
+    function registerOfficial(address _official) external onlyAdmin {
+        isGovernmentOfficial[_official] = true;
+    }
+
+    function registerContractor(address _contractor) external onlyAdmin {
+        isContractor[_contractor] = true;
+    }
+
+    function revokeOfficial(address _official) external onlyAdmin {
+        isGovernmentOfficial[_official] = false;
+    }
+
+    function revokeContractor(address _contractor) external onlyAdmin {
+        isContractor[_contractor] = false;
+    }
+}
 contract Expense {
     uint public amount;
     uint public lastUpdatedDate;
+    address public contractor;
+    string public description;
 
     enum Status { PENDING, APPROVED, REJECTED }
     Status public status;
 
     /// @notice Initializes a new expense with an amount
-    constructor(uint _amount) {
+    constructor(uint _amount, address _contractor, string memory _description) {
         amount = _amount;
+        contractor = _contractor;
+        description = _description;
         status = Status.PENDING;
+        lastUpdatedDate = block.timestamp;
     }
 
     /// @notice Sets the expense status to APPROVED
     function approve() public {
+        require(status == Status.PENDING, "Can only approve pending expenses");
         status = Status.APPROVED;
         lastUpdatedDate = block.timestamp;
     }
 
     /// @notice Sets the expense status to REJECTED
     function reject() public {
+        require(status == Status.PENDING, "Can only approve pending expenses");
         status = Status.REJECTED;
         lastUpdatedDate = block.timestamp;
     }
@@ -30,6 +69,19 @@ contract Expense {
     function getAmount() public view returns (uint) {
         return amount;
     }
+
+    function getContractor() public view returns (address) {
+        return contractor;
+    }
+
+    /// @notice Returns the last updated date for the expense
+    function getdate() public view returns (uint) {
+        return lastUpdatedDate;
+    }
+
+    function getStatus() public view returns (Status) {
+        return status;
+    }
 }
 
 contract Project {
@@ -37,75 +89,135 @@ contract Project {
     Expense[] private approvedExpenses;
     Expense[] private rejectedExpenses;
 
-    address private contractor;
-    string public projectName;
+    address private governmentOfficial;
+    address public contractor;
+    RoleRegistry public roleRegistry;
+    ProjectFunds public projectFunds;
+
     uint public projectTotalBudget;
 
-    /// @notice Initializes a new project which serves as an expense factory
-    constructor(string memory _projectName) {
-        contractor = msg.sender;
-        projectName = _projectName;
+    constructor(address _roleRegistry, address _official, address _contractor) {
+        roleRegistry = RoleRegistry(_roleRegistry);
+
+        require(roleRegistry.isGovernmentOfficial(_official), "Not a government official");
+        require(roleRegistry.isContractor(_contractor), "Not a contractor");
+
+        governmentOfficial = _official;
+        contractor = _contractor;
+        projectFunds = new ProjectFunds(address(this), _contractor);
     }
 
-    /// @notice Initializes a new expense
-    function proposeExpense(uint _amount) public {
-        Expense newExpense = new Expense(_amount);
+    modifier onlyGovernmentOfficial() {
+        require(msg.sender == governmentOfficial, "Not government official");
+        _;
+    }
+
+    modifier onlyContractor() {
+        require(msg.sender == contractor, "Not project contractor");
+        _;
+    }
+
+    function fundProject() public payable onlyGovernmentOfficial {}
+
+    function proposeExpense(uint _amount, string memory _description) public onlyContractor {
+        Expense newExpense = new Expense(_amount, msg.sender, _description);
         projectExpenses.push(newExpense);
     }
 
-    /// @notice Approves the expense and adds the amount the project budget
-    function approveExpense(address _expense) public {
-        require(Expense(_expense).status != Status.APPROVED, "Expense already approved");
+    function approveExpense(address _expense) public onlyGovernmentOfficial {
+        Expense expense = Expense(_expense);
+        uint amount = expense.getAmount();
 
-        Expense(_expense).approve();
-        projectTotalBudget += Expense(_expense).getAmount();
-        approvedExpenses.push(Expense(_expense));
+        require(address(this).balance >= amount, "Insufficient project funds");
+        require(expense.getStatus() == Expense.Status.PENDING, "Expense not pending");
+
+        expense.approve();
+        projectTotalBudget += amount;
+        approvedExpenses.push(expense);
+
+        (bool success, ) = address(projectFunds).call{value: amount}(
+            abi.encodeWithSignature("deposit(address,uint256)", _expense, amount)
+        );
+        require(success, "Escrow deposit failed");
     }
 
-    /// @notice Rejects the expense
-    function rejectExpense(address _expense) public {
-        Expense(_expense).reject();
-        rejectedExpenses.push(Expense(_expense));
-    } 
+    function rejectExpense(address _expense) public onlyGovernmentOfficial {
+        Expense expense = Expense(_expense);
+        expense.reject();
+        rejectedExpenses.push(expense);
+    }
 
-    /// @notice Returns the list of all expenses for the project
     function getAllExpenses() public view returns (Expense[] memory) {
         return projectExpenses;
     }
 
-    /// @notice Returns the list of approved expenses for the project
     function getApprovedExpenses() public view returns (Expense[] memory) {
         return approvedExpenses;
     }
 
-    /// @notice Returns the list of rejected expenses for the project
     function getRejectedExpenses() public view returns (Expense[] memory) {
         return rejectedExpenses;
     }
+}
 
-    /// @notice Returns the total budget from approved expenses for the project
-    function getTotalBudget() public view returns (uint) {
-        return projectTotalBudget;
+contract ProjectFunds {
+    address public projectContract;
+    address public contractor;
+
+    mapping(address => uint) public expenseBalances;  // expense => amount
+    mapping(address => bool) public expenseWithdrawn; // expense => withdrawn?
+
+    modifier onlyProject() {
+        require(msg.sender == projectContract, "Only the project can call this");
+        _;
+    }
+
+    constructor(address _projectContract, address _contractor) {
+        projectContract = _projectContract;
+        contractor = _contractor;
+    }
+
+    receive() external payable {}
+
+    function deposit(address _expense, uint _amount) external payable onlyProject {
+        require(msg.value == _amount, "Incorrect deposit amount");
+        require(expenseBalances[_expense] == 0, "Expense already deposited");
+        expenseBalances[_expense] = _amount;
+    }
+
+    function withdraw(address _expense) external {
+        require(msg.sender == contractor, "Only contractor can withdraw");
+        uint amount = expenseBalances[_expense];
+        require(amount > 0, "No funds for this expense");
+        require(!expenseWithdrawn[_expense], "Already withdrawn");
+
+        expenseWithdrawn[_expense] = true;
+        expenseBalances[_expense] = 0;
+
+        (bool success, ) = payable(contractor).call{value: amount}("");
+        require(success, "Withdrawal failed");
     }
 }
 
+// Note: Only Government officials can create projects.
 contract ProjectFactory {
+    RoleRegistry public roleRegistry;
     Project[] private deployedProjects;
 
-    string public factoryName
-
-    /// @notice Initializes the project factory
-    constructor(string memory _factoryName) {
-        factoryName = _factoryName;
+    constructor(address _roleRegistry) {
+        roleRegistry = RoleRegistry(_roleRegistry);
     }
 
-    /// @notice Initializes a new project
-    function proposeProject(string memory _projectName) public {
-        Project newProject = new Project(_projectName);
+    modifier onlyGovernmentOfficial() {
+        require(roleRegistry.isGovernmentOfficial(msg.sender), "Not government official");
+        _;
+    }
+
+    function proposeProject(address _contractor) public onlyGovernmentOfficial {
+        Project newProject = new Project(address(roleRegistry), msg.sender, _contractor);
         deployedProjects.push(newProject);
     }
 
-    /// @notice Returns the list of all projects
     function getAllProjects() public view returns (Project[] memory) {
         return deployedProjects;
     }
