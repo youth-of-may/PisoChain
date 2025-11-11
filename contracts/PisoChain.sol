@@ -33,6 +33,7 @@ contract RoleRegistry {
         isContractor[_contractor] = false;
     }
 }
+
 contract Expense {
     uint public amount;
     uint public lastUpdatedDate;
@@ -77,6 +78,7 @@ contract Expense {
         return amount;
     }
 
+    /// @notice Returns the address of the contractor
     function getContractor() public view returns (address) {
         return contractor;
     }
@@ -124,16 +126,19 @@ contract Project {
         _;
     }
 
+    /// @notice funds the ETH to its corresponding project.
     function fundProject() public payable onlyGovernmentOfficial {
         require(msg.value > 0, "No ETH sent");
         projectTotalBudget += msg.value;
     }
 
+    /// @notice proposes an expense to the project.
     function proposeExpense(uint _amount, string memory _description) public onlyContractor {
         Expense newExpense = new Expense(_amount, msg.sender, _description);
         projectExpenses.push(newExpense);
     }
 
+    /// @notice approves the expense of the project.
     function approveExpense(address _expense) public onlyGovernmentOfficial {
         Expense expense = Expense(_expense);
 
@@ -144,6 +149,7 @@ contract Project {
         approvedExpenses.push(expense);
     }
 
+    /// @notice rejects the expense of the project.
     function rejectExpense(address _expense) public onlyGovernmentOfficial {
         Expense expense = Expense(_expense);
         require(expense.getStatus() == Expense.Status.PENDING, "Expense not pending.");
@@ -152,6 +158,7 @@ contract Project {
         rejectedExpenses.push(expense);
     }
 
+    /// @notice withdraws the expense of the project.
     function withdrawExpense(address _expenseAddr) public onlyContractor {
         Expense expense = Expense(_expenseAddr);
         require(expense.getStatus() == Expense.Status.APPROVED, "Expense not approved");
