@@ -39,7 +39,7 @@ contract Expense {
     address public contractor;
     string public description;
 
-    enum Status { PENDING, APPROVED, REJECTED }
+    enum Status { PENDING, APPROVED, REJECTED, PAID }
     Status public status;
 
     /// @notice Initializes a new expense with an amount
@@ -62,6 +62,13 @@ contract Expense {
     function reject() public {
         require(status == Status.PENDING, "Can only approve pending expenses");
         status = Status.REJECTED;
+        lastUpdatedDate = block.timestamp;
+    }
+
+    /// @notice Sets the status to PAID
+    function markAsPaid() public {
+        require(status == Status.APPROVED, "Can only pay approved expenses");
+        status = Status.PAID;
         lastUpdatedDate = block.timestamp;
     }
 
@@ -92,19 +99,19 @@ contract Project {
     address private governmentOfficial;
     address public contractor;
     RoleRegistry public roleRegistry;
-    ProjectFunds public projectFunds;
 
     uint public projectTotalBudget;
 
-    constructor(address _roleRegistry, address _official, address _contractor) {
+    constructor(address _roleRegistry, address _official, address _contractor) payable {
         roleRegistry = RoleRegistry(_roleRegistry);
 
         require(roleRegistry.isGovernmentOfficial(_official), "Not a government official");
         require(roleRegistry.isContractor(_contractor), "Not a contractor");
+        require(msg.value > 0, "Project must have ETH");
 
         governmentOfficial = _official;
         contractor = _contractor;
-        projectFunds = new ProjectFunds(address(this), _contractor);
+        projectTotalBudget = msg.value;
     }
 
     modifier onlyGovernmentOfficial() {
@@ -117,7 +124,10 @@ contract Project {
         _;
     }
 
-    function fundProject() public payable onlyGovernmentOfficial {}
+    function fundProject() public payable onlyGovernmentOfficial {
+        require(msg.value > 0, "No ETH sent");
+        projectTotalBudget += msg.value;
+    }
 
     function proposeExpense(uint _amount, string memory _description) public onlyContractor {
         Expense newExpense = new Expense(_amount, msg.sender, _description);
@@ -126,27 +136,34 @@ contract Project {
 
     function approveExpense(address _expense) public onlyGovernmentOfficial {
         Expense expense = Expense(_expense);
-        uint amount = expense.getAmount();
 
-        require(address(this).balance >= amount, "Insufficient project funds");
+        require(address(this).balance >= expense.getAmount(), "Insufficient project funds");
         require(expense.getStatus() == Expense.Status.PENDING, "Expense not pending");
 
         expense.approve();
-        projectTotalBudget += amount;
         approvedExpenses.push(expense);
-
-        (bool success, ) = address(projectFunds).call{value: amount}(
-            abi.encodeWithSignature("deposit(address,uint256)", _expense, amount)
-        );
-        require(success, "Escrow deposit failed");
     }
 
     function rejectExpense(address _expense) public onlyGovernmentOfficial {
         Expense expense = Expense(_expense);
+        require(expense.getStatus() == Expense.Status.PENDING, "Expense not pending.");
+
         expense.reject();
         rejectedExpenses.push(expense);
     }
 
+    function withdrawExpense(address _expenseAddr) public onlyContractor {
+        Expense expense = Expense(_expenseAddr);
+        require(expense.getStatus() == Expense.Status.APPROVED, "Expense not approved");
+
+        uint amount = expense.getAmount();
+        require(address(this).balance >= amount, "Insufficient balance");
+        
+        expense.markAsPaid();
+        payable(contractor).transfer(amount);
+    }
+
+    // View Functions
     function getAllExpenses() public view returns (Expense[] memory) {
         return projectExpenses;
     }
@@ -157,45 +174,6 @@ contract Project {
 
     function getRejectedExpenses() public view returns (Expense[] memory) {
         return rejectedExpenses;
-    }
-}
-
-contract ProjectFunds {
-    address public projectContract;
-    address public contractor;
-
-    mapping(address => uint) public expenseBalances;  // expense => amount
-    mapping(address => bool) public expenseWithdrawn; // expense => withdrawn?
-
-    modifier onlyProject() {
-        require(msg.sender == projectContract, "Only the project can call this");
-        _;
-    }
-
-    constructor(address _projectContract, address _contractor) {
-        projectContract = _projectContract;
-        contractor = _contractor;
-    }
-
-    receive() external payable {}
-
-    function deposit(address _expense, uint _amount) external payable onlyProject {
-        require(msg.value == _amount, "Incorrect deposit amount");
-        require(expenseBalances[_expense] == 0, "Expense already deposited");
-        expenseBalances[_expense] = _amount;
-    }
-
-    function withdraw(address _expense) external {
-        require(msg.sender == contractor, "Only contractor can withdraw");
-        uint amount = expenseBalances[_expense];
-        require(amount > 0, "No funds for this expense");
-        require(!expenseWithdrawn[_expense], "Already withdrawn");
-
-        expenseWithdrawn[_expense] = true;
-        expenseBalances[_expense] = 0;
-
-        (bool success, ) = payable(contractor).call{value: amount}("");
-        require(success, "Withdrawal failed");
     }
 }
 
@@ -213,7 +191,9 @@ contract ProjectFactory {
         _;
     }
 
-    function proposeProject(address _contractor) public onlyGovernmentOfficial {
+    function proposeProject(address _contractor) public payable onlyGovernmentOfficial {
+        require(msg.value > 0, "Must include project budget in ETH");
+
         Project newProject = new Project(address(roleRegistry), msg.sender, _contractor);
         deployedProjects.push(newProject);
     }
