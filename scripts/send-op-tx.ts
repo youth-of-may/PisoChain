@@ -1,4 +1,5 @@
 import hre from "hardhat";
+import "@nomicfoundation/hardhat-ethers";
 
 console.log("Sending transaction using the OP chain type");
 
