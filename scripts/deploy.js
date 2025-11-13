@@ -1,16 +1,20 @@
+import hre from 'hardhat';
+import "@nomicfoundation/hardhat-ethers";
 async function main() {
-   const HelloWorld = await ethers.getContractFactory("HelloWorld");
+  const [sender] = await hre.ethers.getSigners();
 
-   // Start deployment, returning a promise that resolves to a contract object
-   const hello_world = await HelloWorld.deploy("Hello World!");
-   
-   // Wait for the contract to be deployed
-   await hello_world.waitForDeployment();
-   
-   // Get the contract address
-   const contractAddress = await hello_world.getAddress();
-   
-   console.log("Contract deployed to address:", contractAddress);
+  // deploy role registry first 
+   const RoleRegistry = await ethers.getContractFactory("RoleRegistry");
+   const role = await RoleRegistry.deploy()
+   await role.waitForDeployment();
+   console.log("RoleRegistry deployed at:", await role.getAddress());
+
+   // deploy role registry first 
+   const Projects = await ethers.getContractFactory("ProjectFactory");
+   const project = await Projects.deploy(await role.getAddress())
+   await project.waitForDeployment();
+   console.log("ProjectFactory deployed at:", await project.getAddress());
+
 }
 
 main()
