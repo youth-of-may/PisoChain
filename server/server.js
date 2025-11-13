@@ -1,17 +1,14 @@
 import express from 'express';
 import cors from 'cors';
-import { ethers } from 'ethers';
 import 'dotenv/config';
-import contractABI from './contracts/PisoChain.json' assert {type: 'json'};
+import projectRoutes from './api/routes/projects';
+import expenseRoutes from './api/routes/expenses';
 
-const app = express(cors())
-app.use(express.json)
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-const url = process.env.API_URL
-const provider = new ethers.JsonRpcProvider(url)
-const address = process.env.CONTRACT_ADDRESS
-const contract = new ethers.Contract(address, contractABI, provider)
+app.use('/api/projects', projectRoutes)
+app.use('/api/expenses', expenseRoutes)
 
-app.get('/api/projects', (req, res) => {
-    
-})
+app.listen(5000, () => console.log(`Server running on port ${PORT}`));
