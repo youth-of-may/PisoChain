@@ -1,13 +1,5 @@
 'use client';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { DualRangeSlider } from '@/components/ui/range';
+import axios from "axios";
 import React, { useState } from 'react';
 import { DataTable } from '../components/projects/data-table'
 import { columns, data } from '../components/projects/columns'
