@@ -97,6 +97,7 @@ contract Project {
     Expense[] private projectExpenses;
     Expense[] private approvedExpenses;
     Expense[] private rejectedExpenses;
+    Expense[] private paidExpenses;
 
     address private governmentOfficial;
     address public contractor;
@@ -161,6 +162,21 @@ contract Project {
         require(address(this).balance >= amount, "Insufficient balance");
         
         expense.markAsPaid();
+        paidExpenses.push(expense);
+
+        // delete the address of the expense at approvedExpenses array, and place it in paidExpenses.
+        uint idxToRemove = 0;
+        for(uint256 i = 0; i < approvedExpenses.length; i++) {
+            if(approvedExpenses[i] == expense) {
+                idxToRemove = i;
+                break;
+            }
+        }
+        for(uint256 i = idxToRemove; i < approvedExpenses.length - 1; i++) {
+            approvedExpenses[i] = approvedExpenses[i + 1]; // to shift elements manually (i.e. deletion of the approvedExpenses[i])
+        }
+        approvedExpenses.pop();
+
         payable(contractor).transfer(amount);
     }
 
@@ -175,6 +191,10 @@ contract Project {
 
     function getRejectedExpenses() public view returns (Expense[] memory) {
         return rejectedExpenses;
+    }
+
+    function getPaidExpenses() public view returns (Expense[] memory) {
+        return paidExpenses;
     }
 
     function getProjectName() public view returns(string memory) {
