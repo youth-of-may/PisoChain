@@ -84,7 +84,7 @@ contract Expense {
     }
 
     /// @notice Returns the last updated date for the expense
-    function getdate() public view returns (uint) {
+    function getDate() public view returns (uint) {
         return lastUpdatedDate;
     }
 
@@ -102,18 +102,19 @@ contract Project {
     address public contractor;
     RoleRegistry public roleRegistry;
 
-    uint public projectTotalBudget;
+    string projectName;
 
-    constructor(address _roleRegistry, address _official, address _contractor) payable {
+    constructor(address _roleRegistry, address _official, address _contractor, string memory _projectName) payable {
+        require(msg.value > 0, "Project must have ETH");
+        
         roleRegistry = RoleRegistry(_roleRegistry);
 
         require(roleRegistry.isGovernmentOfficial(_official), "Not a government official");
         require(roleRegistry.isContractor(_contractor), "Not a contractor");
-        require(msg.value > 0, "Project must have ETH");
 
         governmentOfficial = _official;
         contractor = _contractor;
-        projectTotalBudget = msg.value;
+        projectName = _projectName;
     }
 
     modifier onlyGovernmentOfficial() {
@@ -124,12 +125,6 @@ contract Project {
     modifier onlyContractor() {
         require(msg.sender == contractor, "Not project contractor");
         _;
-    }
-
-    /// @notice funds the ETH to its corresponding project.
-    function fundProject() public payable onlyGovernmentOfficial {
-        require(msg.value > 0, "No ETH sent");
-        projectTotalBudget += msg.value;
     }
 
     /// @notice proposes an expense to the project.
@@ -163,7 +158,7 @@ contract Project {
         Expense expense = Expense(_expenseAddr);
         require(expense.getStatus() == Expense.Status.APPROVED, "Expense not approved");
 
-        uint amount = expense.getAmount();
+        uint256 amount = expense.getAmount();
         require(address(this).balance >= amount, "Insufficient balance");
         
         expense.markAsPaid();
@@ -182,6 +177,14 @@ contract Project {
     function getRejectedExpenses() public view returns (Expense[] memory) {
         return rejectedExpenses;
     }
+
+    function getProjectName() public view returns(string memory) {
+        return projectName;
+    }
+
+    function getBalance() public view returns(uint256) {
+        return address(this).balance;
+    }
 }
 
 // Note: Only Government officials can create projects.
@@ -198,10 +201,10 @@ contract ProjectFactory {
         _;
     }
 
-    function proposeProject(address _contractor) public payable onlyGovernmentOfficial {
+    function proposeProject(address _contractor, string memory projectName) public payable onlyGovernmentOfficial {
         require(msg.value > 0, "Must include project budget in ETH");
 
-        Project newProject = new Project(address(roleRegistry), msg.sender, _contractor);
+        Project newProject = (new Project){value: msg.value}(address(roleRegistry), msg.sender, _contractor, projectName);
         deployedProjects.push(newProject);
     }
 
