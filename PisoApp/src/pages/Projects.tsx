@@ -1,31 +1,28 @@
 'use client';
 import axios from "axios";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataTable } from '../components/projects/data-table'
 import { columns, data } from '../components/projects/columns'
 import type { Project } from '../components/projects/columns'
 
-async function getData(): Promise<Project[]> {
-  // Fetch data from your API here.
-  return [
-    //sample data
-    {
-      proj_id: 101010,
-      ctr_id: 10000,
-      proj_name: "XOOX",
-      proj_type: "road",
-      proj_desc: "blaaldkalla",
-      proj_status: "pending",
-      proj_loc: "Manila",
-      proj_date: new Date("2025-10-01"),
-      proj_budget: 100000000,
-    },
-    // ...
-  ]
-}
+
 
 export default function Projects() {
   const [values, setValues] = useState([0, 100000]);
+  useEffect(() => {
+          async function getData(): Promise<Project[]> {
+            // Fetch data from your API here.
+            try {
+              const response = await axios.get('/projects');
+              console.log(response)
+              
+            }
+            catch(err) {
+              console.error(err)
+            }
+          }
+          getData() 
+      }, [])
   
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-8">

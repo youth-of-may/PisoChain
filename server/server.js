@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/projects', projectRoutes)
-app.use('/api/expenses', expenseRoutes)
+app.use('/projects', projectRoutes)
+app.use('/expenses', expenseRoutes)
 
 app.listen(5000, () => console.log(`Server running on port ${PORT}`));
