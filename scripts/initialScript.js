@@ -30,7 +30,7 @@ async function main() {
     await projectFactory.waitForDeployment();
     console.log("ProjectFactory deployed at:", await projectFactory.getAddress());
 
-    // Register roles - FIX: await the transactions!
+    // Register roles 
     console.log("\nRegistering roles...");
     
     if (owner) {

@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import 'dotenv/config';
 
 
-const projectFactoryABI = [
+export const projectFactoryABI = [
   // Public variables
   "function roleRegistry() view returns (address)",
   "function nextProjectId() view returns (uint)",
@@ -15,7 +15,7 @@ const projectFactoryABI = [
   // Expense fetcher (delegated)
   "function getProjectExpenses(uint _projectID) view returns (tuple(uint expenseID, uint amount, address contractor, string description, uint8 status)[])"
 ]
-const projectABI = [
+export const projectABI = [
   // Public project info
   "function id() view returns (uint)",
   "function name() view returns (string)",
