@@ -1,29 +1,35 @@
-'use client';
 import axios from "axios";
 import React, { useState, useEffect } from 'react';
 import { DataTable } from '../components/projects/data-table'
 import { columns, data } from '../components/projects/columns'
 import type { Project } from '../components/projects/columns'
 
-
-
 export default function Projects() {
-  const [values, setValues] = useState([0, 100000]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-          async function getData(): Promise<Project[]> {
-            // Fetch data from your API here.
-            try {
-              const response = await axios.get('/projects');
-              console.log(response)
-              
-            }
-            catch(err) {
-              console.error(err)
-            }
-          }
-          getData() 
-      }, [])
+    async function getData() {
+      try {
+        setLoading(true);
+        // Point directly to your Express server
+        const response = await axios.get('http://localhost:5000/projects');
+        setProjects(response.data);
+        setError(null);
+      } catch(err) {
+        console.error(err);
+        setError('Failed to fetch projects');
+      } finally {
+        setLoading(false);
+      }
+    }
+    getData();
+  }, []);
   
+  if (loading) return <div className="text-center py-8">Loading...</div>;
+  if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
+
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="font-source text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#1E4E79] mb-4 text-center">
@@ -34,8 +40,8 @@ export default function Projects() {
       </p>
       
       <div className="w-full lg:w-[75%] mx-auto flex justify-center items-center">
-        <DataTable columns={columns} data={data} />
+        <DataTable columns={columns} data={projects} />
       </div>
     </div>
-  )
+  );
 }

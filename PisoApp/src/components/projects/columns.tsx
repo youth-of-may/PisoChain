@@ -12,16 +12,17 @@ import {
 
 // 🧱 TYPE
 export type Project = {
-  proj_id: number
-  ctr_id: number
-  proj_name: string
-  proj_type: "road" | "infrastructure" | "others"
-  proj_desc: string
-  proj_status: "pending" | "ongoing" | "completed"
-  proj_loc: string
-  proj_date: Date
-  proj_budget: number
+  id: string;
+  contractor: string;
+  name: string;
+  projectType: string;
+  description: string;
+  status: 'AWAITING' | 'ONGOING' | 'COMPLETED';
+  location: string;
+  completionDate: string;
+  budget: string;
 }
+
 
 // 🧱 FAKE DATA
 const createProjects = (numProj: number) => {
@@ -46,24 +47,29 @@ export const data: Project[] = [...createProjects(50)]
 // 🧱 COLUMNS
 export const columns: ColumnDef<Project>[] = [
   {
-    accessorKey: "proj_id",
+    accessorKey: "id",
     header: () => <div className="flex justify-center">Project ID</div>,
-    cell: ({ row }) => <div className="flex justify-center">{row.getValue("proj_id")}</div>,
+    cell: ({ row }) => <div className="flex justify-center">{row.getValue("id")}</div>,
     meta: { title: "Project ID" },
   },
   {
-    accessorKey: "ctr_id",
+    accessorKey: "contractor",
     header: () => <div className="flex justify-center">Contractor ID</div>,
-    cell: ({ row }) => <div className="flex justify-center">{row.getValue("ctr_id")}</div>,
+    cell: ({ row }) => {
+      const address = row.getValue("contractor") as string;
+      // Show shortened address (first 6 and last 4 characters)
+      const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`;
+      return <div className="flex justify-center font-mono text-sm">{shortened}</div>
+    },
     meta: { title: "Contractor ID" },
   },
   {
-    accessorKey: "proj_name",
+    accessorKey: "name",
     header: () => <div className="flex justify-center">Project Name</div>,
     cell: ({ row }) => {
-      const name = row.getValue("proj_name") as string
-      const desc = row.original.proj_desc
-      const loc = row.original.proj_loc
+      const name = row.getValue("name") as string
+      const desc = row.original.description
+      const loc = row.original.location
 
       return (
         <HoverCard>
@@ -87,20 +93,20 @@ export const columns: ColumnDef<Project>[] = [
     meta: { title: "Project Name" },
   },
   {
-    accessorKey: "proj_type",
+    accessorKey: "projectType",
     header: () => <div className="flex justify-center">Project Type</div>,
-    cell: ({ row }) => <div className="flex justify-center">{row.getValue("proj_type")}</div>,
+    cell: ({ row }) => <div className="flex justify-center">{row.getValue("projectType")}</div>,
     meta: { title: "Project Type" },
   },
   {
-    accessorKey: "proj_status",
+    accessorKey: "status",
     header: () => <div className="flex justify-center">Project Status</div>,
     cell: ({ row }) => {
-      const status = row.getValue("proj_status")
+      const status = (row.getValue("status") as string).toLowerCase();
       return (
         <span
           className={`flex justify-center items-center px-2 py-1 rounded-full text-xs font-medium ${
-            status === "pending"
+            status === "awaiting"
               ? "bg-yellow-300/80 text-yellow-800"
               : status === "ongoing"
               ? "bg-blue-200 text-blue-700"
@@ -114,7 +120,7 @@ export const columns: ColumnDef<Project>[] = [
     meta: { title: "Project Status" },
   },
   {
-    accessorKey: "proj_date",
+    accessorKey: "completionDate",
     header: ({ column }) => (
       <div className="flex justify-center">
         <Button
@@ -127,19 +133,20 @@ export const columns: ColumnDef<Project>[] = [
       </div>
     ),
     sortingFn: (a, b) => {
-      const dateA = new Date(a.original.proj_date).getTime()
-      const dateB = new Date(b.original.proj_date).getTime()
+      const dateA = new Date(a.original.completionDate).getTime()
+      const dateB = new Date(b.original.completionDate).getTime()
       return dateA - dateB
     },
     cell: ({ row }) => {
-      const date = new Date(row.getValue("proj_date"))
-      const formatted = date.toLocaleString("default", { month: "long", year: "numeric" })
+      const dateString = row.getValue("completionDate") as string;
+      const date = new Date(dateString);
+      const formatted = date.toLocaleString("default", { month: "long", year: "numeric" });
       return <div className="flex justify-center">{formatted}</div>
     },
     meta: { title: "Project Date" },
   },
   {
-    accessorKey: "proj_budget",
+    accessorKey: "budget",
     header: ({ column }) => (
       <div className="flex justify-center">
         <Button
@@ -151,15 +158,21 @@ export const columns: ColumnDef<Project>[] = [
         </Button>
       </div>
     ),
-    sortingFn: "basic",
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("proj_budget"))
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "PHP",
-      }).format(amount)
-      return <div className="flex justify-center font-medium">{formatted}</div>
+    sortingFn: (a, b) => {
+      const budgetA = parseFloat(a.original.budget);
+      const budgetB = parseFloat(b.original.budget);
+      return budgetA - budgetB;
     },
+    cell: ({ row }) => {
+    const ethAmount = parseFloat(row.getValue("budget"));
+    const ethToPhp = 18800000000000; // Example rate, update with real rate
+    const phpAmount = ethAmount * ethToPhp;
+    const formatted = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "PHP",
+    }).format(phpAmount);
+    return <div className="flex justify-center font-medium">{formatted}</div>
+  },
     meta: { title: "Project Budget" },
   },
 ]
