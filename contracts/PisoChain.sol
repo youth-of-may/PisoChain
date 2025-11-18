@@ -110,6 +110,8 @@ contract Project {
         require(msg.value > 0, "Project must have ETH");
         
         roleRegistry = RoleRegistry(_roleRegistry);
+        require(bytes(_projectName).length > 0, "Project must have a name");
+        require(bytes(_projectDescription).length > 0, "Project must have a description");
         require(roleRegistry.isGovernmentOfficial(_official), "Not a government official");
         require(roleRegistry.isContractor(_contractor), "Not a contractor");
 
