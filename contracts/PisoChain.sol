@@ -104,8 +104,9 @@ contract Project {
     RoleRegistry public roleRegistry;
 
     string projectName;
+    string projectDescription;
 
-    constructor(address _roleRegistry, address _official, address _contractor, string memory _projectName) payable {
+    constructor(address _roleRegistry, address _official, address _contractor, string memory _projectName, string memory _projectDescription) payable {
         require(msg.value > 0, "Project must have ETH");
         
         roleRegistry = RoleRegistry(_roleRegistry);
@@ -115,6 +116,7 @@ contract Project {
         governmentOfficial = _official;
         contractor = _contractor;
         projectName = _projectName;
+        projectDescription = _projectDescription;
     }
 
     modifier onlyGovernmentOfficial() {
@@ -201,6 +203,10 @@ contract Project {
         return projectName;
     }
 
+    function getProjectDescription() public view returns(string memory) {
+        return projectDescription;
+    }
+
     function getBalance() public view returns(uint256) {
         return address(this).balance;
     }
@@ -220,10 +226,10 @@ contract ProjectFactory {
         _;
     }
 
-    function proposeProject(address _contractor, string memory projectName) public payable onlyGovernmentOfficial {
+    function proposeProject(address _contractor, string memory projectName, string memory projectDescription) public payable onlyGovernmentOfficial {
         require(msg.value > 0, "Must include project budget in ETH");
 
-        Project newProject = (new Project){value: msg.value}(address(roleRegistry), msg.sender, _contractor, projectName);
+        Project newProject = (new Project){value: msg.value}(address(roleRegistry), msg.sender, _contractor, projectName, projectDescription);
         deployedProjects.push(newProject);
     }
 
