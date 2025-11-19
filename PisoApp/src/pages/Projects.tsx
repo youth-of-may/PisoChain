@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DataTable } from '../components/projects/data-table'
 import { columns, data } from '../components/projects/columns'
 import type { Project } from '../components/projects/columns'
+import { API_URL } from "@/config/api"
 
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -14,10 +15,7 @@ export default function Projects() {
       try {
         setLoading(true);
         // Point directly to your Express server
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await axios.get(`${apiUrl}/projects/`, {
-          timeout: 60000
-        })
+        const response = await axios.get(`${API_URL}/projects/`)
         setProjects(response.data);
         setError(null);
       } catch(err) {
