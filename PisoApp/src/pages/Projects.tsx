@@ -16,7 +16,7 @@ export default function Projects() {
         // Point directly to your Express server
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         const response = await axios.get(`${apiUrl}/projects/`, {
-          timeout: 60000;
+          timeout: 60000
         })
         setProjects(response.data);
         setError(null);
