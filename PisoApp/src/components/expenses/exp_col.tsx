@@ -12,12 +12,11 @@ import {
 
 // 🧱 TYPE
 export type Expenses = {
-  proj_id: number
-  exp_id: number
-  exp_desc: string
-  exp_status: "Approved" | "Rejected"
-  exp_date: Date
-  exp_amt: number
+  projectID: string
+  expenseID: string
+  amount: string
+  description: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID'
 }
 
 // 🧱 FAKE DATA
@@ -25,12 +24,11 @@ const createExpenses = (numExp: number) => {
   const expenses: Expenses[] = []
   for (let i = 0; i < numExp; i++) {
     expenses.push({
-      proj_id: faker.number.int({min:1, max:50}),
-      exp_id: faker.number.int(),
-      exp_desc: faker.commerce.productDescription(),
-      exp_status: faker.helpers.arrayElement(["Approved", "Rejected"]),
-      exp_date: faker.date.anytime(),
-      exp_amt: faker.number.int(),
+      expenseID: faker.number.int({min:1, max:200}).toString(),
+      amount: faker.finance.amount({ min: 0.1, max: 10, dec: 4 }), // ETH amount
+      contractor: faker.finance.ethereumAddress(),
+      description: faker.commerce.productDescription(),
+      status: faker.helpers.arrayElement(["PENDING", "APPROVED", "PAID"]),
     })
   }
   return expenses
@@ -40,83 +38,92 @@ export const data: Expenses[] = [...createExpenses(200)]
 // 🧱 COLUMNS
 export const exp_col: ColumnDef<Expenses>[] = [
   {
-    accessorKey: "proj_id",
-    header: () => <div className="flex justify-center">Project ID</div>,
-    cell: ({ row }) => <div className="flex justify-center">{row.getValue("proj_id")}</div>,
-    meta: { title: "Project ID" },
+    accessorKey: "expenseID",
+    header: () => <div className="flex justify-center">Expense ID</div>,
+    cell: ({ row }) => <div className="flex justify-center">{row.getValue("expenseID")}</div>,
+    meta: { title: "Expense ID" },
   },
   {
-    accessorKey: "exp_id",
-    header: () => <div className="flex justify-center">Expenses ID</div>,
-    cell: ({ row }) => <div className="flex justify-center">{row.getValue("exp_id")}</div>,
-    meta: { title: "Expenses ID" },
-  },
-  {
-    accessorKey: "exp_status",
-    header: () => <div className="flex justify-center">Expenses Status</div>,
+    accessorKey: "amount",
+    header: ({ column }) => (
+      <div className="flex justify-center">
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Amount
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    ),
+    sortingFn: (a, b) => {
+      const amountA = parseFloat(a.original.amount);
+      const amountB = parseFloat(b.original.amount);
+      return amountA - amountB;
+    },
     cell: ({ row }) => {
-      const status = row.getValue("exp_status")
+      const ethAmount = parseFloat(row.getValue("amount"));
+      const ethToPhp = 18800000000000; // ETH to PHP rate - update as needed
+      const phpAmount = ethAmount * ethToPhp;
+      const formatted = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "PHP",
+      }).format(phpAmount);
+      return (
+        <div className="flex flex-col items-center">
+          <div className="font-medium">{formatted}</div>
+        </div>
+      )
+    },
+    meta: { title: "Amount" },
+  },
+  {
+    accessorKey: "description",
+    header: () => <div className="flex justify-center">Description</div>,
+    cell: ({ row }) => {
+      const desc = row.getValue("description") as string
+      const truncated = desc.length > 50 ? desc.substring(0, 50) + "..." : desc
+
+      return (
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <div className="flex items-center gap-2 cursor-pointer hover:text-blue-700">
+              {truncated}
+              {desc.length > 50 && <Info className="w-4 h-4 opacity-60" />}
+            </div>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <p className="text-sm">{desc}</p>
+          </HoverCardContent>
+        </HoverCard>
+      )
+    },
+    meta: { title: "Description" },
+  },
+  {
+    accessorKey: "status",
+    header: () => <div className="flex justify-center">Payment Status</div>,
+    cell: ({ row }) => {
+      const status = (row.getValue("status") as string).toLowerCase();
       return (
         <span
           className={`flex justify-center items-center px-2 py-1 rounded-full text-xs font-medium ${
-            status === "Rejected"
+            status === "pending"
+              ? "bg-yellow-300/80 text-yellow-800"
+              : status === "approved"
+              ? "bg-blue-200 text-blue-700"
+              : status === "rejected"
               ? "bg-red-300/80 text-red-800"
-              : "bg-green-200 text-green-700"
+              : status === "paid"
+              ? "bg-green-200 text-green-700"
+              : "bg-gray-200 text-gray-700" // fallback for any other status
           }`}
         >
           {status}
         </span>
       )
     },
-    meta: { title: "Expenses Status" },
+    meta: { title: "Payment Status" },
   },
-  {
-    accessorKey: "exp_date",
-    header: ({ column }) => (
-      <div className="flex justify-center">
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Expenses Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    ),
-    sortingFn: (a, b) => {
-      const dateA = new Date(a.original.exp_date).getTime()
-      const dateB = new Date(b.original.exp_date).getTime()
-      return dateA - dateB
-    },
-    cell: ({ row }) => {
-      const date = new Date(row.getValue("exp_date"))
-      const formatted = date.toLocaleString("default", { month: "long", year: "numeric" })
-      return <div className="flex justify-center">{formatted}</div>
-    },
-    meta: { title: "Expenses Date" },
-  },
-  {
-    accessorKey: "exp_amt",
-    header: ({ column }) => (
-      <div className="flex justify-center">
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Expenses Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    ),
-    sortingFn: "basic",
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("exp_amt"))
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "PHP",
-      }).format(amount)
-      return <div className="flex justify-center font-medium">{formatted}</div>
-    },
-    meta: { title: "Expenses Amount" },
-  },
+  
 ]

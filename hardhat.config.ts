@@ -1,20 +1,44 @@
-/**
-* @type import('hardhat/config').HardhatUserConfig
-*/
+import { HardhatUserConfig } from "hardhat/config";
+import "@nomicfoundation/hardhat-toolbox";
+import dotenv from 'dotenv';
 
-require('dotenv').config();
-require("@nomicfoundation/hardhat-toolbox");
+dotenv.config();
 
-const { API_URL, PRIVATE_KEY } = process.env;
+const {
+  API_URL,
+  PRIVATE_KEY_1,
+  PRIVATE_KEY_2,
+  PRIVATE_KEY_3,
+  PRIVATE_KEY_4,
+  PRIVATE_KEY_5
+} = process.env;
 
-module.exports = {
-   solidity: "0.8.5",
-   defaultNetwork: "sepolia",
-   networks: {
-      hardhat: {},
-      sepolia: {
-         url: API_URL,
-         accounts: [`0x${PRIVATE_KEY}`]
+
+const accounts = [
+  PRIVATE_KEY_1,
+  PRIVATE_KEY_2,
+  PRIVATE_KEY_3,
+  PRIVATE_KEY_4,
+  PRIVATE_KEY_5
+]
+  .filter(key => key) 
+  .map(key => `0x${key}`);
+
+const config: HardhatUserConfig = {
+  solidity: "0.8.5",
+  defaultNetwork: "hardhat",
+  networks: {
+    hardhat: {
+      accounts: {
+        count: 20,
+        accountsBalance: "10000000000000000000000"
       }
-   },
-}
+    },
+    sepolia: {
+      url: API_URL || "",
+      accounts: accounts 
+    }
+  }
+};
+
+export default config;
