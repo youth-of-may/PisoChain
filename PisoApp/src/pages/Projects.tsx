@@ -14,7 +14,8 @@ export default function Projects() {
       try {
         setLoading(true);
         // Point directly to your Express server
-        const response = await axios.get('http://localhost:5000/projects');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await axios.get(`${apiUrl}/projects/`)
         setProjects(response.data);
         setError(null);
       } catch(err) {
