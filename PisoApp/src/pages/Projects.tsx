@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DataTable } from '../components/projects/data-table'
 import { columns, data } from '../components/projects/columns'
 import type { Project } from '../components/projects/columns'
-import { API_URL } from "@/config/api"
-
+import {API_URL} from './api.ts'
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
