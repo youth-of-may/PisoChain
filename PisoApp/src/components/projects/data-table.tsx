@@ -175,7 +175,7 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     className="py-4 bg-white hover:bg-blue-200/10 transition-colors"
-                    onClick={() => navigate(`/projects/${row.original.proj_id}/expenses`)}
+                    onClick={() => navigate(`/projects/${(row.original as any).id}/expenses`)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className="py-4 whitespace-nowrap">

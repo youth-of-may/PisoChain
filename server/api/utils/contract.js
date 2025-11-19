@@ -50,7 +50,7 @@ export const projectABI = [
 
 
 const url = process.env.API_URL;
-const provider = new ethers.JsonRpcProvider(url);
+export const provider = new ethers.JsonRpcProvider(url);
 const proj_addr = process.env.CONTRACT_ADDRESS;
 
 // Initialize contracts
@@ -82,4 +82,22 @@ export async function getProjectDetails(projectAddress) {
     completionDate,
     budget: ethers.formatEther(budget)
   }
+}
+
+// In contract.js
+export async function getExpenses(projectAddress) {
+  const projectContract = new ethers.Contract(projectAddress, projectABI, provider);
+  
+  // Use getAllExpenses instead - it's cleaner
+  const expenses = await projectContract.getAllExpenses();
+  
+  const statusMap = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'];
+  
+  return expenses.map(expense => ({
+    expenseID: expense.expenseID.toString(),
+    amount: ethers.formatEther(expense.amount),
+    contractor: expense.contractor, // Don't forget the contractor field!
+    description: expense.description,
+    status: statusMap[Number(expense.status)]
+  }));
 }

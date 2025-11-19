@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom"
+import axios from 'axios'
 import { useState, useEffect } from "react"
-import { exp_col, data } from "@/components/expenses/exp_col"
+import { exp_col } from "@/components/expenses/exp_col"
 import type { Expenses } from "@/components/expenses/exp_col"
 import { ExpensesDataTable } from "@/components/expenses/exp_data_table"
 import { ArrowLeft } from "lucide-react"
@@ -8,6 +9,8 @@ import { ArrowLeft } from "lucide-react"
 export default function Expenses() {
     const { id } = useParams()
     const [expenses, setExpenses] = useState<Expenses[]>([]) 
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate()
     
     const handleBack = () => {
@@ -15,20 +18,27 @@ export default function Expenses() {
     }
     
     useEffect(() => {
-        async function fetchData() {
-            try {
-                //replace with api fetch
-                const filtered = data.filter(expense => expense.proj_id === Number(id))
-                setExpenses(filtered)
-            }
-            catch(error) {
-                console.error('Error fetching expenses:', error)
-            }
+    async function fetchData() {
+        try {
+            const response = await axios.get(`http://localhost:5000/projects/${id}/expenses`)
+            setExpenses(response.data)
+            setError(null);
         }
-        
-        fetchData() 
-    }, [id])
+        catch(error) {
+            console.error('Error fetching expenses:', error)
+            setError('Failed to load expenses');
+        }
+        finally {
+            setLoading(false);
+        }
+    }
     
+    if (id) {  // Add this check to only fetch when id exists
+        fetchData() 
+    }
+}, [id])
+     if (loading) return <div className="text-center py-8">Loading...</div>;
+     if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
     return (
         <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
             <button 
