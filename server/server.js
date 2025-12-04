@@ -1,17 +1,14 @@
 import express from 'express';
-import cors from 'cors';
-import 'dotenv/config';
-import projectRoutes from './api/routes/projects.js';
-import expenseRoutes from './api/routes/expenses.js';
+import projectsRouter from './api/routes/projects.js';
+import expensesRouter from './api/routes/expenses.js';
 
 const app = express();
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
-app.use(express.json());
 
-app.use('/projects', projectRoutes)
-app.use('/projects', expenseRoutes)
+// Mount the routers with base paths
+app.use('/api/projects', projectsRouter);
+app.use('/api/expenses', expensesRouter);
 
-app.listen(5000, () => console.log(`Server running on port 5000`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
