@@ -21,7 +21,7 @@ router.get('/sync', async (req, res) => {
           description: details.description,
           status: details.status,
           location: details.location,
-          completion_date: details.completionDate,
+          completionDate: details.completionDate,
           budget: details.budget,
           project_address: address
         };
