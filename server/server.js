@@ -1,7 +1,6 @@
 import express from 'express';
-import projectsRouter from './api/routes/projects.js';
-import expensesRouter from './api/routes/expenses.js';
-
+import projectsRouter from './api/routes/projects.js'
+import expensesRouter from './api/routes/expenses.js'
 const app = express();
 
 // Mount the routers with base paths
