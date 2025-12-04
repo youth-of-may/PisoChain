@@ -15,7 +15,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use('/projects', projectRoutes)
-app.use('/projects', expenseRoutes)
+// Mount the routers with base paths
+app.use('/api/projects', projectsRouter);
+app.use('/api/expenses', expensesRouter);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
