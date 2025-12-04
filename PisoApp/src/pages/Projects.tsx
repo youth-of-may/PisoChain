@@ -36,7 +36,7 @@ export default function Projects() {
         Project Listings
       </h1>
       <p className="max-w-2xl mx-auto text-center mb-6 sm:mb-8 lg:mb-10 font-inter text-sm sm:text-base px-4">
-        Lorem ipsum dolor sit amet. Est placeat tenetur ex Quis omnis a tenetur omnis 33 sapiente veritatis est provident galisum ex error odio.
+        Driving National Growth Through Accountable Investment. This initiative oversees critical public works and technology deployment. Using PisoChain, we ensure every phase, from procurement to execution, is fully auditable, transparent, and compliant.
       </p>
       
       <div className="w-full lg:w-[75%] mx-auto flex justify-center items-center">
