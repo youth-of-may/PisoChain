@@ -1,40 +1,70 @@
 import express from 'express'
 import { projectC, getExpenses, projectABI, provider } from '../utils/contract.js'
 import { ethers } from 'ethers';
+import { supabase } from '../utils/db.js';
 
 const router = express.Router({mergeParams: true});
 
-router.get('/:id/expenses', async (req, res) => {  
+router.get('/sync/:id/expenses', async (req, res) => {  
   try {
     const projectID = req.params.id;
     console.log(`Getting expenses for project ID: ${projectID}`);
 
-    if (!projectID || projectID === 'undefined') {
-      return res.status(400).json({ message: 'Invalid project ID' });
+    // 1. Get the project address from the projectID
+    const allProjects = await projectC.getAllProjects();
+    const projectAddress = allProjects[projectID]; // Array index matches project ID
+    
+    if (!projectAddress) {
+      return res.status(404).json({ error: 'Project not found' });
     }
+
+    // 2. Fetch expenses from blockchain
+    const expenses = await getExpenses(projectAddress); // Fixed: was undefined
     
-    const projectAddresses = await projectC.getAllProjects();
-    
-    let targetProjectAddress = null;
-    for (const address of projectAddresses) {
-      const projectContract = new ethers.Contract(address, projectABI, provider);
-      const id = await projectContract.id();
-      if (id.toString() === projectID) {
-        targetProjectAddress = address;
-        break;
-      }
-    }
-    
-    if (!targetProjectAddress) {
-      return res.status(404).json({ message: 'Project not found' });
-    }
-    
-    const expenses = await getExpenses(targetProjectAddress);
-    console.log(`Received ${expenses.length} expenses`);
-    res.json(expenses);
+    // 3. Format for database
+    const expensesData = expenses.map(exp => ({
+      expense_id: parseInt(exp.expenseID),
+      project_id: parseInt(projectID), // Use the projectID from params
+      amount: exp.amount,
+      contractor: exp.contractor,
+      description: exp.description,
+      status: exp.status
+    }));
+
+    // 4. Insert into Supabase
+    const { data, error } = await supabase
+      .from('expenses')
+      .upsert(expensesData, { onConflict: 'project_id,expense_id' });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      expenses: expensesData
+    });
+
   } catch (error) {
-    console.error('Error in expenses route:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Error syncing expenses:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get expenses from database
+router.get('/:id/expenses', async (req, res) => {
+  try {
+    const projectID = req.params.id; // Fixed: was req.params.projectId
+    
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('project_id', projectID); // Fixed: changed 'id' to 'project_id'
+
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching expenses:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
