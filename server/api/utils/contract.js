@@ -68,7 +68,7 @@ export async function getProjectDetails(projectAddress) {
     projectContract.description(),
     projectContract.location(),
     projectContract.completionDate(),
-    projectContract.projectTotalBudget()
+    projectContract.projectTotalBudget(),
   ]);
   const statusMap = ['AWAITING', 'ONGOING', 'COMPLETED'];
   return {
@@ -80,23 +80,27 @@ export async function getProjectDetails(projectAddress) {
     status: statusMap[Number(status)], //enum returns a number so we still have to map it here
     location,
     completionDate,
-    budget: ethers.formatEther(budget)
+    budget: ethers.formatEther(budget),
+    address: projectAddress
   }
 }
 
-// In contract.js
 export async function getExpenses(projectAddress) {
   const projectContract = new ethers.Contract(projectAddress, projectABI, provider);
   
-  // Use getAllExpenses instead - it's cleaner
-  const expenses = await projectContract.getAllExpenses();
+  // Get both expenses and project ID from the contract
+  const [expenses, projectId] = await Promise.all([
+    projectContract.getAllExpenses(),
+    projectContract.id()
+  ]);
   
   const statusMap = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'];
   
   return expenses.map(expense => ({
     expenseID: expense.expenseID.toString(),
+    projectId: projectId.toString(), 
     amount: ethers.formatEther(expense.amount),
-    contractor: expense.contractor, // Don't forget the contractor field!
+    contractor: expense.contractor,
     description: expense.description,
     status: statusMap[Number(expense.status)]
   }));

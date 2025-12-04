@@ -54,7 +54,7 @@ export default function Expenses() {
                 Project Expenses
             </h1>
             <p className="max-w-2xl mx-auto text-center mb-10 font-inter text-sm sm:text-base px-4">
-                Lorem ipsum dolor sit amet. Est placeat tenetur ex Quis omnis a tenetur omnis 33 sapiente veritatis est provident galisum ex error odio. 
+                Public funds require public oversight. This ledger provides a real-time, transparent record of all expenditures related to this project. All transactions are verifiable on the PisoChain network, documenting how funds are being allocated, their purpose, and their current payment status.
             </p>
             <div className="w-full lg:w-[75%] mx-auto flex justify-center items-center">
                 <ExpensesDataTable columns={exp_col} data={expenses} />
