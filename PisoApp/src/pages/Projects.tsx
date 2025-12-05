@@ -1,32 +1,55 @@
-import axios from "axios";
 import React, { useState, useEffect } from 'react';
 import { DataTable } from '../components/projects/data-table'
-import { columns, data } from '../components/projects/columns'
+import { columns } from '../components/projects/columns'
 import type { Project } from '../components/projects/columns'
-import {API_URL} from './api.ts'
+import { supabase } from "@/lib/supabase.js";
+
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function getData() {
+    async function fetchProjects() {
       try {
-        setLoading(true);
-        // Point directly to your Express server
-        const response = await axios.get(`${API_URL}/projects/`)
-        setProjects(response.data);
-        setError(null);
-      } catch(err) {
-        console.error(err);
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('id', { ascending: true });
+
+        if (error) {
+          console.error('Supabase error:', error);
+          setError(error.message);
+        } else if (data) {
+          console.log('Fetched projects:', data);
+          
+          // Map snake_case to camelCase if needed
+          const mappedProjects = data.map(project => ({
+            id: project.id,
+            contractor: project.contractor,
+            name: project.name,
+            projectType: project.project_type,
+            description: project.description,
+            status: project.status,
+            location: project.location,
+            completionDate: project.completion_date,
+            budget: project.budget,
+            projectAddress: project.project_address
+          }));
+          
+          setProjects(mappedProjects);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
         setError('Failed to fetch projects');
       } finally {
         setLoading(false);
       }
     }
-    getData();
+
+    fetchProjects();
   }, []);
-  
+
   if (loading) return <div className="text-center py-8">Loading...</div>;
   if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
 

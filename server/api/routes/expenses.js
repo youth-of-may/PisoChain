@@ -68,4 +68,62 @@ router.get('/:id/expenses', async (req, res) => {
   }
 });
 
+router.get('/sync-all', async (req, res) => {
+  try {
+    // 1. Get all projects from database (which have project addresses)
+    const { data: projects, error: projectError } = await supabase
+      .from('projects')
+      .select('id, project_address');
+
+    if (projectError) throw projectError;
+
+    if (!projects || projects.length === 0) {
+      return res.status(404).json({ error: 'No projects found. Sync projects first.' });
+    }
+
+    // 2. Fetch expenses for all projects in parallel
+    const allExpensesData = [];
+    
+    await Promise.all(
+      projects.map(async (project) => {
+        try {
+          const expenses = await getExpenses(project.project_address);
+          
+          const formattedExpenses = expenses.map(exp => ({
+            expense_id: parseInt(exp.expenseID),
+            project_id: parseInt(project.id),
+            amount: exp.amount,
+            contractor: exp.contractor,
+            description: exp.description,
+            status: exp.status
+          }));
+          
+          allExpensesData.push(...formattedExpenses);
+        } catch (err) {
+          console.error(`Error fetching expenses for project ${project.id}:`, err);
+        }
+      })
+    );
+
+    // 3. Bulk insert into Supabase
+    if (allExpensesData.length > 0) {
+      const { data, error } = await supabase
+        .from('expenses')
+        .upsert(allExpensesData, { onConflict: 'project_id,expense_id' });
+
+      if (error) throw error;
+    }
+
+    res.json({
+      success: true,
+      message: `Synced ${allExpensesData.length} expenses across ${projects.length} projects`,
+      totalExpenses: allExpensesData.length
+    });
+
+  } catch (error) {
+    console.error('Error syncing all expenses:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
