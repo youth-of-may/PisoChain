@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom"
-import axios from 'axios'
 import { useState, useEffect } from "react"
 import { exp_col } from "@/components/expenses/exp_col"
 import type { Expenses } from "@/components/expenses/exp_col"
 import { ExpensesDataTable } from "@/components/expenses/exp_data_table"
 import { ArrowLeft } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 export default function Expenses() {
     const { id } = useParams()
@@ -18,28 +18,52 @@ export default function Expenses() {
     }
     
     useEffect(() => {
-    async function fetchData() {
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            const response = await axios.get(`${apiUrl}/projects/${id}/expenses`)
-            setExpenses(response.data)
-            setError(null);
+        async function fetchExpenses() {
+            try {
+                const { data, error } = await supabase
+                    .from('expenses')
+                    .select('*')
+                    .eq('project_id', id)
+                    .order('expense_id', { ascending: true });
+
+                if (error) {
+                    console.error('Supabase error:', error);
+                    setError(error.message);
+                } else if (data) {
+                    console.log('Fetched expenses:', data);
+                    
+                    // Map snake_case to camelCase to match your Expenses type
+                    const mappedExpenses = data.map(expense => ({
+                        expenseId: expense.expense_id,
+                        projectId: expense.project_id,
+                        amount: expense.amount,
+                        contractor: expense.contractor,
+                        description: expense.description,
+                        status: expense.status,
+                    }));
+                    
+                    setExpenses(mappedExpenses);
+                    setError(null);
+                }
+            } catch (err) {
+                console.error('Unexpected error:', err);
+                setError('Failed to load expenses');
+            } finally {
+                setLoading(false);
+            }
         }
-        catch(error) {
-            console.error('Error fetching expenses:', error)
-            setError('Failed to load expenses');
-        }
-        finally {
+        
+        if (id) {
+            fetchExpenses();
+        } else {
             setLoading(false);
+            setError('No project ID provided');
         }
-    }
-    
-    if (id) {  // Add this check to only fetch when id exists
-        fetchData() 
-    }
-}, [id])
-     if (loading) return <div className="text-center py-8">Loading...</div>;
-     if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
+    }, [id]);
+
+    if (loading) return <div className="text-center py-8">Loading...</div>;
+    if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
+
     return (
         <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
             <button 
