@@ -34,7 +34,7 @@ export default function Expenses() {
                     
                     // Map snake_case to camelCase to match your Expenses type
                     const mappedExpenses = data.map(expense => ({
-                        expenseId: expense.expense_id,
+                        expenseID: expense.expense_id,
                         projectId: expense.project_id,
                         amount: expense.amount,
                         contractor: expense.contractor,
