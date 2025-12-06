@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/dashboard'); // Adjust your API URL
+      const response = await fetch('https://pisochain.onrender.com/api/dashboard'); 
       if (!response.ok) throw new Error('Failed to fetch dashboard data');
       const data = await response.json();
       setStats(data);
