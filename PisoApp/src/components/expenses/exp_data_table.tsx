@@ -114,7 +114,7 @@ export function ExpensesDataTable<TData, TValue>({
 
           <Select
             onValueChange={(value) =>
-              table.getColumn("exp_status")?.setFilterValue(value === "all" ? undefined : value)
+              table.getColumn("status")?.setFilterValue(value === "all" ? undefined : value)
             }
           >
             <SelectTrigger className="w-full sm:w-[180px] bg-white">
@@ -122,8 +122,10 @@ export function ExpensesDataTable<TData, TValue>({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
               <SelectItem value="Approved">Approved</SelectItem>
               <SelectItem value="Rejected">Rejected</SelectItem>
+              <SelectItem value="PAID">Paid</SelectItem>
             </SelectContent>
           </Select>
 
