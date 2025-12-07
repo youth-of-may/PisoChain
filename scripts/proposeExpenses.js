@@ -44,70 +44,39 @@ async function main() {
     ];
 
 
-   
 
+    if (allProjects[2] && contractor1) {
+        const project1 = await hre.ethers.getContractAt(projectABI, allProjects[2]);
+        const contractorAddr = await project1.contractor();
+        
+        if (contractorAddr === contractor1.address) {
+            const expense1a = await project1.connect(contractor1).proposeExpense(
+                hre.ethers.parseEther("0.002"),
+                "Sidewalk construction"
+            );
+            await expense1a.wait();
+            console.log("✅ Expense proposed for Commonwealth Avenue Expansion: 0.002 ETH");
+            const expense1b = await project1.connect(contractor1).proposeExpense(
+                hre.ethers.parseEther("0.05"),
+                "Bike lane markings or pavement"
+            );
+            await expense1b.wait();
+            console.log("✅ Expense proposed for Commonwealth Avenue Expansion: 0.05 ETH");
+        }
+    }
+
+    // Propose expense for Project 2 (Elementary School)
     if (allProjects[1] && contractor2) {
         const project2 = await hre.ethers.getContractAt(projectABI, allProjects[1]);
         const contractorAddr = await project2.contractor();
         
         if (contractorAddr === contractor2.address) {
             const expense2 = await project2.connect(contractor2).proposeExpense(
-                hre.ethers.parseEther("0.001"),
-                "Will Ashley tarpaulin"
-            );
-            await expense2.wait();
-            console.log("✅ Expense proposed for DusBia road: 0.006 ETH");
-        }
-    }
-
-    if (allProjects[2] && contractor1) {
-        const project1 = await hre.ethers.getContractAt(projectABI, allProjects[0]);
-        const contractorAddr = await project1.contractor();
-        
-        if (contractorAddr === contractor1.address) {
-            const expense1 = await project1.connect(contractor1).proposeExpense(
-                hre.ethers.parseEther("0.002"),
-                "Heavy equipment rental and fuel for initial site clearing"
-            );
-            await expense1.wait();
-            console.log("✅ Expense proposed for Commonwealth Avenue Expansion: 0.008 ETH");
-        }
-    }
-
-    // Propose expense for Project 2 (Elementary School)
-    if (allProjects[3] && contractor2) {
-        const project2 = await hre.ethers.getContractAt(projectABI, allProjects[1]);
-        const contractorAddr = await project2.contractor();
-        
-        if (contractorAddr === contractor2.address) {
-            const expense2 = await project2.connect(contractor2).proposeExpense(
-                hre.ethers.parseEther("0.002"),
-                "Purchase of construction materials: cement, steel bars, and lumber"
+                hre.ethers.parseEther("0.005"),
+                "Road signs & lane markings"
             );
             await expense2.wait();
             console.log("✅ Expense proposed for Elementary School: 0.006 ETH");
-        }
-    }
-
-    // Propose multiple expenses for Project 3 (Health Center)
-    if (allProjects[4] && contractor3) {
-        const project3 = await hre.ethers.getContractAt(projectABI, allProjects[2]);
-        const contractorAddr = await project3.contractor();
-        
-        if (contractorAddr === contractor3.address) {
-            const expense3a = await project3.connect(contractor3).proposeExpense(
-                hre.ethers.parseEther("0.003"),
-                "Foundation work and excavation services"
-            );
-            await expense3a.wait();
-            console.log("✅ Expense 1 proposed for Health Center: 0.007 ETH");
-
-            const expense3b = await project3.connect(contractor3).proposeExpense(
-                hre.ethers.parseEther("0.002"),
-                "Electrical wiring and plumbing materials"
-            );
-            await expense3b.wait();
-            console.log("✅ Expense 2 proposed for Health Center: 0.005 ETH");
         }
     }
 
