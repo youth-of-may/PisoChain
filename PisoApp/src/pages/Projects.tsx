@@ -9,6 +9,29 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Safe date parser that works on mobile
+  const parseDate = (dateString: string | null | undefined): Date | null => {
+    if (!dateString) return null;
+    
+    try {
+      // Ensure the date string is in ISO format (YYYY-MM-DD)
+      // Remove any time component and ensure proper format
+      const dateOnly = dateString.split('T')[0]; // Get just the date part
+      const date = new Date(dateOnly);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateString);
+        return null;
+      }
+      
+      return date;
+    } catch (err) {
+      console.error('Date parsing error:', err, dateString);
+      return null;
+    }
+  };
+
   useEffect(() => {
     async function fetchProjects() {
       try {
@@ -23,21 +46,26 @@ export default function Projects() {
         } else if (data) {
           console.log('Fetched projects:', data);
           
-          // Map snake_case to camelCase if needed
-          const mappedProjects = data.map(project => ({
-            id: project.id,
-            contractor: project.contractor,
-            name: project.name,
-            projectType: project.project_type,
-            description: project.description,
-            status: project.status,
-            location: project.location,
-            completionDate: project.completion_date,
-            budget: project.budget,
-            projectAddress: project.project_address
-          }));
+          // Map snake_case to camelCase with safe date parsing
+          const mappedProjects = data.map(project => {
+            const parsedDate = parseDate(project.completion_date);
+            
+            return {
+              id: project.id,
+              contractor: project.contractor,
+              name: project.name,
+              projectType: project.project_type,
+              description: project.description,
+              status: project.status,
+              location: project.location,
+              completionDate: parsedDate, // Will be null if invalid
+              budget: project.budget,
+              projectAddress: project.project_address
+            };
+          });
           
           setProjects(mappedProjects);
+          setError(null);
         }
       } catch (err) {
         console.error('Unexpected error:', err);
