@@ -120,31 +120,70 @@ export const columns: ColumnDef<Project>[] = [
     meta: { title: "Project Status" },
   },
   {
-    accessorKey: "completionDate",
-    header: ({ column }) => (
-      <div className="flex justify-center">
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Project Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      </div>
-    ),
-    sortingFn: (a, b) => {
-      const dateA = new Date(a.original.completionDate).getTime()
-      const dateB = new Date(b.original.completionDate).getTime()
-      return dateA - dateB
-    },
-    cell: ({ row }) => {
-      const dateString = row.getValue("completionDate") as string;
-      const date = new Date(dateString);
-      const formatted = date.toLocaleString("default", { month: "long", year: "numeric" });
-      return <div className="flex justify-center">{formatted}</div>
-    },
-    meta: { title: "Project Date" },
+  accessorKey: "completionDate",
+  header: ({ column }) => (
+    <div className="flex justify-center">
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Project Date
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  ),
+  sortingFn: (a, b) => {
+    // Safe sorting that handles null/invalid dates
+    const dateA = a.original.completionDate;
+    const dateB = b.original.completionDate;
+    
+    // Handle null dates - put them at the end
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    
+    // Compare timestamps safely
+    const timeA = dateA instanceof Date ? dateA.getTime() : new Date(dateA).getTime();
+    const timeB = dateB instanceof Date ? dateB.getTime() : new Date(dateB).getTime();
+    
+    // Handle invalid dates
+    if (isNaN(timeA) && isNaN(timeB)) return 0;
+    if (isNaN(timeA)) return 1;
+    if (isNaN(timeB)) return -1;
+    
+    return timeA - timeB;
   },
+  cell: ({ row }) => {
+    const date = row.getValue("completionDate") as Date | string | null;
+    
+    // Handle null or undefined
+    if (!date) {
+      return <div className="flex justify-center text-gray-400">Not set</div>;
+    }
+    
+    try {
+      // Convert to Date object if it's a string
+      const dateObj = date instanceof Date ? date : new Date(date);
+      
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        return <div className="flex justify-center text-red-400">Invalid date</div>;
+      }
+      
+      // Format safely for mobile browsers
+      const formatted = dateObj.toLocaleString("en-US", { 
+        month: "long", 
+        year: "numeric" 
+      });
+      
+      return <div className="flex justify-center">{formatted}</div>;
+    } catch (error) {
+      console.error('Date formatting error:', error, date);
+      return <div className="flex justify-center text-red-400">Invalid date</div>;
+    }
+  },
+  meta: { title: "Project Date" },
+}, 
   {
     accessorKey: "budget",
     header: ({ column }) => (
