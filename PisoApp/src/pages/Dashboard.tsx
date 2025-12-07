@@ -123,7 +123,7 @@ const formatNumber = (num: number): string => {
         Every Peso, Every Purpose
       </h1>
       <p className="max-w-2xl mx-auto text-center mb-10 font-inter text-sm sm:text-base px-4">
-        Lorem ipsum dolor sit amet. Est placeat tenetur ex Quis omnis a tenetur omnis 33 sapiente veritatis est provident galisum ex error odio. 
+        Tracking every peso from allocation to impact. PisoChain brings unprecedented transparency to public infrastructure spending, ensuring accountability at every step of the project lifecycle.
       </p>
       
       <div className="flex flex-col sm:flex-col lg:flex-row w-full justify-center items-center gap-4 sm:gap-6 mb-8 sm:mb-12 lg:mb-16">
