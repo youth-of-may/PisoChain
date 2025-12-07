@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card"
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
+import { supabase } from "@/lib/supabase";
 
 interface DashboardStats {
   totalBudget: number;
@@ -32,18 +33,40 @@ export default function Dashboard() {
   }, []);
 
   const fetchDashboardStats = async () => {
-    try {
-      const response = await fetch('https://pisochain.onrender.com/api/dashboard'); 
-      if (!response.ok) throw new Error('Failed to fetch dashboard data');
-      const data = await response.json();
-      setStats(data);
-    } catch (err: any) {
-      setError(err.message);
-      console.error('Error fetching dashboard stats:', err);
-    } finally {
+  try {
+    const { data, error } = await supabase
+      .from('dashboard_stats')
+      .select('*')
+      .eq('id', 1)
+      .single();            
+
+    if (error) {
+      console.error('Supabase error:', error);
+      setError(error.message);
       setLoading(false);
+      return;
     }
-  };
+
+    if (data) {
+      console.log('Fetched dashboard stats:', data);
+      
+      // data is already a single object, not an array
+      // Just map the fields directly
+      setStats({
+        totalBudget: parseFloat(data.total_budget) * 18800000000000 || 0,
+        numProjects: data.num_projects || 0,
+        approvedExpenses: parseFloat(data.approved_expenses ) * 18800000000000|| 0,
+        remainingBudget: parseFloat(data.remaining_budget) * 18800000000000 || 0
+      });
+      setError(null);
+    }
+  } catch (err: any) {
+    console.error('Unexpected error:', err);
+    setError('Failed to load dashboard stats');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const formatCurrency = (amount: number): string => {
   // Handle null/undefined/NaN - CHECK THIS FIRST
