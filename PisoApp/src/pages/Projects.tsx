@@ -9,28 +9,37 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Safe date parser that works on mobile
-  const parseDate = (dateString: string | null | undefined): Date | null => {
-    if (!dateString) return null;
+ const parseDate = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) {
+    console.log('No date string provided');
+    return null;
+  }
+  
+  try {
+    console.log('Parsing date:', dateString); // Debug log
     
-    try {
-      // Ensure the date string is in ISO format (YYYY-MM-DD)
-      // Remove any time component and ensure proper format
-      const dateOnly = dateString.split('T')[0]; // Get just the date part
-      const date = new Date(dateOnly);
-      
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date:', dateString);
-        return null;
-      }
-      
-      return date;
-    } catch (err) {
-      console.error('Date parsing error:', err, dateString);
+    // Try parsing the date directly first
+    let date = new Date(dateString);
+    
+    // If that fails, try extracting just the date part
+    if (isNaN(date.getTime())) {
+      const dateOnly = dateString.split('T')[0].split(' ')[0];
+      date = new Date(dateOnly + 'T00:00:00'); // Add time component for better compatibility
+    }
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date after parsing:', dateString);
       return null;
     }
-  };
+    
+    console.log('Successfully parsed date:', date); // Debug log
+    return date;
+  } catch (err) {
+    console.error('Date parsing error:', err, dateString);
+    return null;
+  }
+};
 
   useEffect(() => {
     async function fetchProjects() {
