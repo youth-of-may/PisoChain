@@ -5,6 +5,7 @@ import Regions from "./pages/Expenses";
 import './index.css'
 import Projects from './pages/Projects';
 import Expenses from "./pages/Expenses";
+import About from "./pages/About";
 
 function App() {
 
@@ -13,6 +14,7 @@ function App() {
     <Routes>
       <Route path="/" element={<MainLayout/>}>
       <Route index element={<Dashboard/>}/>
+      <Route path="about" element={<About/>}/>
       <Route path="projects" element={<Projects/>}/>
       <Route path="regions" element={<Regions/>}/>
       <Route path="projects/:id/expenses" element={<Expenses/>}/>
