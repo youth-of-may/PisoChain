@@ -25,7 +25,7 @@
 
 - ✅ Develop a blockchain dApp that records budget allocations and expenditures
 - ✅ Enable authorized government officials to record financial data
-- ✅ Allow auditors to verify or reject transactions
+- ✅ Allow officials to approve or reject transaction requests
 - ✅ Provide citizens with transparent access to transaction records
 - ✅ Demonstrate blockchain's role in enforcing transparency and data integrity
 
@@ -39,18 +39,19 @@
 
 ### 🏛️ Government Officials
 - Propose infrastructure projects with budgets
-- Submit expense requests for approval
+- Approve or reject expense requests
 - Track project progress and completion
 - Manage contractor assignments
+- Control project status transitions
 
 </td>
 <td width="50%">
 
-### 🔍 Auditors
-- Review and approve/reject expenses
-- Verify transaction legitimacy
-- Ensure compliance with budget limits
-- Monitor spending patterns
+### 👷 Contractors
+- Submit expense proposals
+- Withdraw approved funds
+- View assigned project details
+- Track expense status
 
 </td>
 </tr>
@@ -62,6 +63,7 @@
 - Track budget allocations
 - Monitor approved expenses
 - Verify transaction integrity
+- Access complete audit trail
 
 </td>
 <td width="50%">
@@ -104,7 +106,7 @@ graph TB
 </tr>
 <tr>
 <td><strong>Smart Contracts</strong></td>
-<td>Solidity</td>
+<td>Solidity ^0.8.2</td>
 <td>Business logic enforcement</td>
 </tr>
 <tr>
@@ -153,73 +155,153 @@ graph TB
 
 ## 📊 Data Model
 
-### Core Entities
+### Smart Contract Entities
 
-#### 🏗️ Project
+#### 🏗️ Project Contract
 ```
-PROJECT_ID (Primary Key)
-├── CONTRACTOR_ID (Foreign Key)
-├── Project_Name
-├── Project_Description
-├── Project_Type
-├── Project_Location
-├── Completion_Date
-├── Total_Budget
-├── Project_Status (AWAITING, ONGOING, COMPLETED)
-└── Project_Address (Blockchain)
-```
-
-#### 💰 Expense
-```
-EXPENSE_ID (Primary Key)
-├── PROJECT_ID (Foreign Key)
-├── Amount
-├── Description
-├── Contractor_Address
-├── Status (PENDING, APPROVED, REJECTED, PAID)
-└── Timestamp
+id (uint)
+├── name (string)
+├── projectType (string)
+├── description (string)
+├── location (string)
+├── completionDate (string)
+├── projectStatus (enum: AWAITING, ONGOING, COMPLETED)
+├── contractor (address)
+├── governmentOfficial (address - private)
+├── projectTotalBudget (uint)
+├── expenses (Expense[])
+└── nextExpenseId (uint)
 ```
 
-#### 👷 Contractor
+#### 💰 Expense Struct
 ```
-CONTRACTOR_ID (Primary Key)
-├── Contractor_Name
-├── Wallet_Address
-└── Assigned_Projects[]
+expenseID (uint)
+├── amount (uint)
+├── contractor (address)
+├── description (string)
+└── status (enum: PENDING, APPROVED, REJECTED, PAID)
 ```
 
-#### 🏛️ Government Official
+#### 👥 RoleRegistry Contract
 ```
-OFFICIAL_ID (Primary Key)
-├── Official_Name
-├── Wallet_Address
-├── Role (Admin, Auditor)
-└── Permissions
+isGovernmentOfficial (mapping: address => bool)
+├── isContractor (mapping: address => bool)
+└── admin (address)
+```
+
+### Database Entities (Supabase)
+
+#### Projects Table
+```sql
+id (integer, primary key)
+├── contractor (text)
+├── name (text)
+├── project_type (text)
+├── description (text)
+├── status (text)
+├── location (text)
+├── completion_date (date)
+├── budget (numeric)
+└── project_address (text)
+```
+
+#### Expenses Table
+```sql
+expense_id (text)
+├── project_id (integer, foreign key)
+├── amount (numeric)
+├── contractor (text)
+├── description (text)
+└── status (text)
+```
+
+#### Dashboard Stats Table
+```sql
+id (integer, primary key)
+├── total_budget (numeric)
+├── num_projects (integer)
+├── approved_expenses (numeric)
+├── remaining_budget (numeric)
+└── last_updated (timestamp)
 ```
 
 ---
 
-## 🔐 Smart Contract Functions
+## 🔐 Smart Contract Architecture
 
-### Project Management
-- `proposeProject()` - Create new infrastructure project
-- `setProjectOngoing()` - Mark project as active
-- `setProjectCompleted()` - Mark project as finished
-- `getAllProjects()` - Retrieve all projects
-- `getProjectDetails()` - Get specific project info
+### Three-Contract System
 
-### Expense Management
-- `proposeExpense()` - Submit expense for approval
-- `approveExpense()` - Auditor approves expense
-- `rejectExpense()` - Auditor rejects expense
-- `withdrawExpense()` - Contractor withdraws approved funds
-- `getAllExpenses()` - Get all expenses for a project
+#### 1️⃣ **RoleRegistry Contract**
+Manages user roles and permissions across the entire system.
 
-### Query Functions
-- `getProjectCount()` - Total number of projects
-- `getProjectExpenses()` - Expenses for specific project
-- `projectTotalBudget()` - Get allocated budget
-- `projectStatus()` - Current project state
+**Functions:**
+- `registerOfficial(address)` - Admin registers government official
+- `registerContractor(address)` - Admin registers contractor
+- `revokeOfficial(address)` - Admin revokes official status
+- `revokeContractor(address)` - Admin revokes contractor status
+
+**Access Control:**
+- Only admin can register/revoke roles
+- Used by other contracts to verify permissions
+
+---
+
+#### 2️⃣ **Project Contract**
+Individual contract deployed for each infrastructure project.
+
+**Constructor Parameters:**
+```solidity
+uint _id,
+address _roleRegistry,
+address _official,
+address _contractor,
+string memory _name,
+string memory _projectType,
+string memory _description,
+string memory _location,
+string memory _completionDate
+```
+
+**Core Functions:**
+
+**Expense Management (Contractor):**
+- `proposeExpense(uint _amount, string _description)` - Submit expense request
+- `withdrawExpense(uint _index)` - Withdraw approved funds
+
+**Expense Management (Government Official):**
+- `approveExpense(uint _index)` - Approve pending expense
+- `rejectExpense(uint _index)` - Reject pending expense
+
+**Project Status (Government Official):**
+- `setProjectOngoing()` - Change status to ONGOING
+- `setProjectCompleted()` - Change status to COMPLETED
+
+**View Functions (Public):**
+- `getAllExpenses()` - Returns all expenses for the project
+
+---
+
+#### 3️⃣ **ProjectFactory Contract**
+Main entry point for creating and managing projects.
+
+**Functions:**
+
+**Project Creation (Government Official Only):**
+```solidity
+function proposeProject(
+    address _contractor,
+    string memory _name,
+    string memory _projectType,
+    string memory _description,
+    string memory _location,
+    string memory _completionDate
+) public payable
+```
+
+**Query Functions (Public):**
+- `getAllProjects()` - Returns array of all deployed Project contracts
+- `getProjectCount()` - Returns total number of projects
+- `getProjectExpenses(uint _projectID)` - Returns expenses for specific project
 
 ---
 
@@ -232,24 +314,24 @@ OFFICIAL_ID (Primary Key)
 <th>Access Level</th>
 </tr>
 <tr>
-<td>🏛️ <strong>Government Official</strong></td>
+<td>🔧 <strong>Admin</strong></td>
 <td>
-- Create projects<br>
-- Set budgets<br>
-- Manage contractors<br>
-- Update project status
+- Register government officials<br>
+- Register contractors<br>
+- Revoke official status<br>
+- Revoke contractor status
 </td>
-<td>Write + Read</td>
+<td>Full Control (RoleRegistry)</td>
 </tr>
 <tr>
-<td>🔍 <strong>Auditor</strong></td>
+<td>🏛️ <strong>Government Official</strong></td>
 <td>
+- Propose projects with budget<br>
 - Approve expenses<br>
 - Reject expenses<br>
-- Verify transactions<br>
-- Review compliance
+- Set project status (ONGOING/COMPLETED)
 </td>
-<td>Write (Approval) + Read</td>
+<td>Write + Read</td>
 </tr>
 <tr>
 <td>👷 <strong>Contractor</strong></td>
@@ -272,6 +354,8 @@ OFFICIAL_ID (Primary Key)
 </tr>
 </table>
 
+**Note:** The current implementation uses Government Officials for both proposal and approval functions. There is no separate "Auditor" role - government officials handle both project management and expense approval.
+
 ---
 
 ## ⚙️ Installation & Setup
@@ -282,6 +366,7 @@ Node.js >= 18.x
 npm or yarn
 MetaMask wallet
 Git
+Sepolia testnet ETH
 ```
 
 ### 1️⃣ Clone Repository
@@ -307,14 +392,21 @@ npm install
 
 ### 3️⃣ Environment Setup
 
+**Blockchain (.env)**
+```env
+API_URL=your_sepolia_rpc_url
+PRIVATE_KEY=your_wallet_private_key
+ETHERSCAN_API_KEY=your_etherscan_api_key
+```
+
 **Backend (.env)**
 ```env
 API_URL=your_sepolia_rpc_url
 PRIVATE_KEY=your_wallet_private_key
-CONTRACT_ADDRESS=deployed_contract_address
-ROLE_ADDRESS=role_registry_address
+CONTRACT_ADDRESS=deployed_projectfactory_address
+ROLE_ADDRESS=deployed_roleregistry_address
 SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
+SUPABASE_KEY=your_supabase_service_key
 PORT=3000
 ```
 
@@ -322,26 +414,138 @@ PORT=3000
 ```env
 VITE_API_URL=http://localhost:3000
 VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_KEY=your_supabase_anon_key
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### 4️⃣ Deploy Smart Contracts
+
+**Compile contracts:**
 ```bash
 cd blockchain
 npx hardhat compile
+```
+
+**Deploy to Sepolia testnet:**
+```bash
 npx hardhat run scripts/deploy.js --network sepolia
 ```
 
-### 5️⃣ Setup Database
-```sql
--- Run in Supabase SQL Editor
-CREATE TABLE projects (...);
-CREATE TABLE expenses (...);
-CREATE TABLE dashboard_stats (...);
--- See database schema in /docs/schema.sql
+**Example deployment script:**
+```javascript
+const RoleRegistry = await ethers.getContractFactory("RoleRegistry");
+const roleRegistry = await RoleRegistry.deploy();
+await roleRegistry.deployed();
+
+const ProjectFactory = await ethers.getContractFactory("ProjectFactory");
+const projectFactory = await ProjectFactory.deploy(roleRegistry.address);
+await projectFactory.deployed();
+
+console.log("RoleRegistry:", roleRegistry.address);
+console.log("ProjectFactory:", projectFactory.address);
 ```
 
-### 6️⃣ Run Application
+### 5️⃣ Setup Database
+
+**Run in Supabase SQL Editor:**
+```sql
+-- Projects table
+CREATE TABLE projects (
+  id INTEGER PRIMARY KEY,
+  contractor TEXT,
+  name TEXT,
+  project_type TEXT,
+  description TEXT,
+  status TEXT,
+  location TEXT,
+  completion_date DATE,
+  budget NUMERIC(20, 2),
+  project_address TEXT
+);
+
+-- Expenses table
+CREATE TABLE expenses (
+  expense_id TEXT,
+  project_id INTEGER REFERENCES projects(id),
+  amount NUMERIC(20, 2),
+  contractor TEXT,
+  description TEXT,
+  status TEXT,
+  PRIMARY KEY (expense_id, project_id)
+);
+
+-- Dashboard stats table
+CREATE TABLE dashboard_stats (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  total_budget NUMERIC(20, 2) DEFAULT 0,
+  num_projects INTEGER DEFAULT 0,
+  approved_expenses NUMERIC(20, 2) DEFAULT 0,
+  remaining_budget NUMERIC(20, 2) DEFAULT 0,
+  last_updated TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT single_row CHECK (id = 1)
+);
+
+INSERT INTO dashboard_stats (id) VALUES (1);
+
+-- Create function to update dashboard stats
+CREATE OR REPLACE FUNCTION update_dashboard_stats()
+RETURNS void AS $$
+BEGIN
+  UPDATE dashboard_stats
+  SET 
+    total_budget = (SELECT COALESCE(SUM(budget), 0) FROM projects),
+    num_projects = (SELECT COUNT(*) FROM projects),
+    approved_expenses = (
+      SELECT COALESCE(SUM(amount), 0) 
+      FROM expenses 
+      WHERE status = 'APPROVED' OR status = 'PAID'
+    ),
+    remaining_budget = (
+      SELECT COALESCE(SUM(budget), 0) FROM projects
+    ) - (
+      SELECT COALESCE(SUM(amount), 0) 
+      FROM expenses 
+      WHERE status = 'APPROVED' OR status = 'PAID'
+    ),
+    last_updated = NOW()
+  WHERE id = 1;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers
+CREATE OR REPLACE FUNCTION refresh_dashboard_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+  PERFORM update_dashboard_stats();
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER projects_stats_trigger
+AFTER INSERT OR UPDATE OR DELETE ON projects
+FOR EACH STATEMENT
+EXECUTE FUNCTION refresh_dashboard_stats();
+
+CREATE TRIGGER expenses_stats_trigger
+AFTER INSERT OR UPDATE OR DELETE ON expenses
+FOR EACH STATEMENT
+EXECUTE FUNCTION refresh_dashboard_stats();
+```
+
+### 6️⃣ Register Roles
+
+**Register your addresses in RoleRegistry:**
+```javascript
+// Using Hardhat console or script
+const roleRegistry = await ethers.getContractAt("RoleRegistry", ROLE_ADDRESS);
+
+// Register government official
+await roleRegistry.registerOfficial("0xYourOfficialAddress");
+
+// Register contractor
+await roleRegistry.registerContractor("0xYourContractorAddress");
+```
+
+### 7️⃣ Run Application
 ```bash
 # Terminal 1 - Backend
 cd server
@@ -352,20 +556,34 @@ cd client
 npm run dev
 ```
 
-### 7️⃣ Access Application
+### 8️⃣ Access Application
 ```
 Frontend: http://localhost:5173
 Backend API: http://localhost:3000
+Blockchain: Sepolia Testnet
 ```
 
 ---
 
 ## 🚀 Usage Examples
 
-### Creating a Project (Government Official)
+### Register Roles (Admin)
 ```javascript
+const roleRegistry = await ethers.getContractAt("RoleRegistry", ROLE_ADDRESS);
+
+// Register government official
+await roleRegistry.registerOfficial("0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+
+// Register contractor
+await roleRegistry.registerContractor("0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199");
+```
+
+### Create a Project (Government Official)
+```javascript
+const projectFactory = await ethers.getContractAt("ProjectFactory", CONTRACT_ADDRESS);
+
 await projectFactory.proposeProject(
-  contractorAddress,
+  "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199", // contractor address
   "Metro Manila Skyway Extension",
   "Highway",
   "Extension of existing skyway infrastructure",
@@ -375,145 +593,272 @@ await projectFactory.proposeProject(
 );
 ```
 
-### Proposing an Expense (Contractor)
+### Propose an Expense (Contractor)
 ```javascript
-await projectContract.proposeExpense(
+const project = await ethers.getContractAt("Project", projectAddress);
+
+await project.proposeExpense(
   ethers.parseEther("50"), // 50 ETH
-  "Steel reinforcement materials"
+  "Steel reinforcement materials for Phase 1"
 );
 ```
 
-### Approving an Expense (Auditor)
+### Approve an Expense (Government Official)
 ```javascript
-await projectContract.approveExpense(0); // Approve expense ID 0
+await project.approveExpense(0); // Approve expense at index 0
+```
+
+### Withdraw Approved Funds (Contractor)
+```javascript
+await project.withdrawExpense(0); // Withdraw expense at index 0
+```
+
+### Change Project Status (Government Official)
+```javascript
+// Start project
+await project.setProjectOngoing();
+
+// Complete project
+await project.setProjectCompleted();
+```
+
+### Query Projects (Anyone)
+```javascript
+// Get all projects
+const projects = await projectFactory.getAllProjects();
+
+// Get project count
+const count = await projectFactory.getProjectCount();
+
+// Get project details
+const projectContract = await ethers.getContractAt("Project", projects[0]);
+const name = await projectContract.name();
+const budget = await projectContract.projectTotalBudget();
+const status = await projectContract.projectStatus();
+
+// Get all expenses for a project
+const expenses = await projectContract.getAllExpenses();
 ```
 
 ---
 
 ## 📁 Project Structure
 ```
-pisochain/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/    # Reusable UI components
-│   │   ├── pages/         # Page components
-│   │   ├── lib/           # Utilities & config
-│   │   └── App.tsx
-│   └── package.json
-├── server/                # Express backend
-│   ├── api/
-│   │   ├── routes/       # API endpoints
-│   │   └── utils/        # Helper functions
-│   └── server.js
-├── blockchain/            # Smart contracts
-│   ├── contracts/        # Solidity contracts
-│   ├── scripts/          # Deployment scripts
-│   └── hardhat.config.js
-└── docs/                 # Documentation
+PISO/
+├── PisoChain/                     # Main project folder
+│   ├── .deps/
+│   │   └── remix-tests/          # Remix IDE testing artifacts
+│   ├── artifacts/                # Compiled contract artifacts
+│   ├── cache/                    # Hardhat cache files
+│   ├── contracts/                # Solidity smart contracts
+│   │   └── ProjectFactory.sol   # Main contract (RoleRegistry, Project, ProjectFactory)
+│   ├── ignition/
+│   │   └── modules/             # Hardhat Ignition deployment modules
+│   │       └── Lock.ts
+│   ├── node_modules/            # Node.js dependencies
+│   ├── PisoApp/                 # React frontend application
+│   │   ├── public/             # Static assets
+│   │   ├── src/
+│   │   │   ├── components/    # Reusable UI components
+│   │   │   │   ├── ui/       # shadcn/ui components
+│   │   │   │   ├── projects/ # Project-specific components
+│   │   │   │   │   ├── columns.tsx
+│   │   │   │   │   └── data-table.tsx
+│   │   │   │   └── Navbar.tsx
+│   │   │   ├── pages/        # Page components
+│   │   │   │   ├── Dashboard.tsx
+│   │   │   │   ├── Projects.tsx
+│   │   │   │   └── About.tsx
+│   │   │   ├── lib/          # Utilities & config
+│   │   │   │   ├── supabase.ts
+│   │   │   │   └── utils.ts
+│   │   │   ├── App.tsx       # Main app component
+│   │   │   ├── main.tsx      # Entry point
+│   │   │   └── index.css     # Global styles
+│   │   ├── .env              # Frontend environment variables
+│   │   ├── package.json
+│   │   ├── vite.config.ts    # Vite configuration
+│   │   ├── tailwind.config.js
+│   │   └── tsconfig.json
+│   ├── scripts/              # Deployment & utility scripts
+│   │   └── deploy.js        # Contract deployment script
+│   ├── server/              # Express.js backend
+│   │   ├── api/
+│   │   │   ├── routes/     # API endpoints
+│   │   │   │   ├── projects.js
+│   │   │   │   ├── expenses.js
+│   │   │   │   └── home.js
+│   │   │   └── utils/      # Helper functions
+│   │   │       ├── contract.js   # Blockchain interaction
+│   │   │       ├── db.js         # Supabase client
+│   │   │       └── sync.js       # Blockchain-DB sync
+│   │   ├── server.js       # Express server entry point
+│   │   ├── .env           # Backend environment variables
+│   │   └── package.json
+│   ├── test/               # Smart contract tests
+│   │   └── Lock.ts        # Sample test file
+│   ├── typechain-types/   # TypeScript contract type definitions
+│   ├── .env               # Root environment variables
+│   ├── .gitignore        # Git ignore rules
+│   ├── hardhat.config.ts # Hardhat configuration
+│   ├── package-lock.json
+│   ├── package.json      # Root package dependencies
+│   ├── README.md         # Project documentation
+│   └── tsconfig.json     # TypeScript configuration
 ```
+
+### Key Directories
+
+| Directory | Purpose |
+|-----------|---------|
+| `contracts/` | Solidity smart contracts for blockchain logic |
+| `PisoApp/` | React frontend application with TypeScript |
+| `server/` | Express.js backend API for data aggregation |
+| `scripts/` | Deployment and utility scripts |
+| `test/` | Smart contract unit tests |
+| `ignition/modules/` | Hardhat Ignition deployment modules |
+| `typechain-types/` | Auto-generated TypeScript types for contracts |
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `hardhat.config.ts` | Hardhat network and compiler configuration |
+| `tsconfig.json` | TypeScript configuration for the project |
+| `PisoApp/vite.config.ts` | Vite build tool configuration |
+| `PisoApp/tailwind.config.js` | Tailwind CSS styling configuration |
+| `.env` files | Environment variables (not committed to Git) |
 
 ---
 
 ## 🔄 Data Flow
+
+### Project Creation Flow
 ```mermaid
 sequenceDiagram
-    participant C as Citizen
-    participant F as Frontend
-    participant B as Backend
-    participant D as Database
-    participant SC as Smart Contract
+    participant GO as Gov Official
+    participant MM as MetaMask
+    participant PF as ProjectFactory
+    participant RR as RoleRegistry
+    participant P as Project Contract
     participant BC as Blockchain
 
-    C->>F: View Projects
-    F->>B: GET /api/projects
-    B->>D: Query projects
-    D-->>B: Return data
-    B-->>F: Project list
-    F-->>C: Display projects
+    GO->>MM: Sign Transaction
+    MM->>PF: proposeProject()
+    PF->>RR: Check isGovernmentOfficial
+    RR-->>PF: Verified
+    PF->>P: Deploy new Project
+    P->>BC: Store project data
+    BC-->>P: Confirmed
+    P-->>PF: Project address
+    PF-->>GO: Transaction success
+```
 
-    C->>F: View Project Details
-    F->>SC: getProjectDetails()
-    SC->>BC: Read blockchain
-    BC-->>SC: Project data
-    SC-->>F: Project details
-    F-->>C: Display details
+### Expense Approval Flow
+```mermaid
+sequenceDiagram
+    participant C as Contractor
+    participant P as Project Contract
+    participant GO as Gov Official
+    participant BC as Blockchain
+
+    C->>P: proposeExpense()
+    P->>BC: Store expense (PENDING)
+    
+    GO->>P: approveExpense()
+    P->>BC: Update status (APPROVED)
+    
+    C->>P: withdrawExpense()
+    P->>BC: Update status (PAID)
+    P->>C: Transfer ETH
+```
+
+### Frontend Data Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend API
+    participant DB as Supabase
+    participant SC as Smart Contract
+
+    U->>F: View Dashboard
+    F->>B: GET /api/home
+    B->>DB: Query dashboard_stats
+    DB-->>B: Stats data
+    B-->>F: JSON response
+    F-->>U: Display stats
+
+    U->>F: View Projects
+    F->>B: GET /api/projects
+    B->>DB: Query projects
+    DB-->>B: Project list
+    B-->>F: JSON response
+    F-->>U: Display projects
 ```
 
 ---
 
 ## 🛡️ Security Features
 
-- ✅ **Role-Based Access Control** - Smart contract enforces permissions
+- ✅ **Role-Based Access Control** - Smart contract enforces permissions via RoleRegistry
+- ✅ **Modifier Protection** - `onlyGovernmentOfficial`, `onlyContractor`, `onlyAdmin` modifiers
 - ✅ **Cryptographic Signatures** - All transactions verified via MetaMask
 - ✅ **Immutable Records** - Blockchain prevents data tampering
-- ✅ **Audit Trail** - Complete transaction history
-- ✅ **Input Validation** - Both frontend and smart contract validation
-- ✅ **Secure Environment Variables** - Sensitive data protected
+- ✅ **Balance Checks** - Contracts verify sufficient funds before transfers
+- ✅ **Status Validation** - Expenses can only be approved/rejected when PENDING
+- ✅ **Input Validation** - Array bounds checking and require statements
+- ✅ **Secure Environment Variables** - Sensitive data protected in .env files
 
 ---
 
 ## 🧪 Testing
+
+### Smart Contract Testing
 ```bash
-# Run smart contract tests
 cd blockchain
 npx hardhat test
+```
 
-# Run frontend tests
-cd client
-npm run test
+### Run Specific Tests
+```bash
+npx hardhat test test/ProjectFactory.test.js
+npx hardhat test --grep "should create project"
+```
 
-# Run backend tests
-cd server
-npm run test
+### Coverage Report
+```bash
+npx hardhat coverage
+```
+
+### Local Blockchain Testing
+```bash
+# Terminal 1 - Start local node
+npx hardhat node
+
+# Terminal 2 - Deploy to local network
+npx hardhat run scripts/deploy.js --network localhost
+
+# Terminal 3 - Run tests
+npx hardhat test --network localhost
 ```
 
 ---
 
 ## 📈 Future Enhancements
 
-- [ ] Multi-signature approval for large budgets
-- [ ] Integration with Philippine Government ID system
+- [ ] Separate Auditor role distinct from Government Officials
+- [ ] Multi-signature approval for large budgets (>₱1M)
+- [ ] Integration with Philippine Government ID system (eGovPH)
 - [ ] Mobile app (React Native)
-- [ ] Advanced analytics dashboard
-- [ ] PDF report generation
-- [ ] Email notifications for approvals
-- [ ] Integration with other government agencies
-- [ ] Mainnet deployment
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 👥 Team
-
-**Project Duration:** October - November 2024  
-**Scope:** Department of Public Works and Highways (DPWH)  
-**Target:** Government Infrastructure Transparency
-
----
-
-## 📞 Contact & Support
-
-For questions, issues, or contributions:
-- 📧 Email: [your-email@example.com]
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/pisochain/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/pisochain/discussions)
+- [ ] Advanced analytics and reporting dashboard
+- [ ] PDF report generation for audit trails
+- [ ] Email/SMS notifications for approvals
+- [ ] Integration with other government agencies (DBM, COA)
+- [ ] Milestone-based payment releases
+- [ ] Automated compliance checking
+- [ ] IPFS integration for document storage
+- [ ] Mainnet deployment considerations
 
 ---
 
@@ -522,6 +867,9 @@ For questions, issues, or contributions:
 ### Built with ❤️ for Government Transparency
 
 **PisoChain** • Making Every Peso Count
+
+**Project Duration:** October - December 2024  
+**Scope:** Department of Public Works and Highways (DPWH)
 
 [![GitHub Stars](https://img.shields.io/github/stars/yourusername/pisochain?style=social)](https://github.com/yourusername/pisochain)
 [![GitHub Forks](https://img.shields.io/github/forks/yourusername/pisochain?style=social)](https://github.com/yourusername/pisochain/fork)
