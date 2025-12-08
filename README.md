@@ -868,7 +868,7 @@ npx hardhat test --network localhost
 
 **PisoChain** • Making Every Peso Count
 
-**Project Duration:** October - December 2024  
+**Project Duration:** October - December 2025
 **Scope:** Department of Public Works and Highways (DPWH)
 
 [![GitHub Stars](https://img.shields.io/github/stars/yourusername/pisochain?style=social)](https://github.com/yourusername/pisochain)
